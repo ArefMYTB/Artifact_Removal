@@ -1,6 +1,3 @@
-# Distortion__Generation
+## Introduction
 
-Create a pipeline to apply various distortions to the annotated body parts. This can include transformations like rotation, scaling, skewing, stretching, or more complex deformations.
-
-![alt text](https://github.com/ArefMYTB/Distortion__Generation/blob/main/images/output_distorted_image.jpg)
-![alt text](https://github.com/ArefMYTB/Distortion__Generation/blob/main/images/output_stretched_image.jpg)
+The Body Shape Rectification Module provides tools and algorithms to correct distorted body shapes in images. The module takes input images with varying degrees of distortion and produces visually improved images by applying rectification techniques.
