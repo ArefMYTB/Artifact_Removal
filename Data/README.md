@@ -6,7 +6,7 @@ Deformation
 
 │
 
-├── 1  ├── Distorted -- Mask -- Original
+├── 1 ├── Distorted -- Mask -- Original
 
 ├── 2
 
