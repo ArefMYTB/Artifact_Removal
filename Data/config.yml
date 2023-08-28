@@ -1,7 +1,13 @@
 data:
-  distortion_folder: Dataset/DHI # if you want the whole dataset
   deformation_folder: Dataset/DHI/Deformation
   texture_folder: Dataset/DHI/Texture
+  none_folder: Dataset/DHI/None
   input_width: 256
   input_height: 256
+classifier:
   batch_size: 32
+  num_epochs: 10
+  train_ratio: 0.8
+  val_ratio: 0.1
+  test_ratio: 0.1
+  

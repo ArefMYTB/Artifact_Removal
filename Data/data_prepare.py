@@ -1,9 +1,10 @@
 import os
+import yaml
 from PIL import Image
 from torch.utils.data import Dataset, DataLoader, ConcatDataset
 import torchvision.transforms as transforms
 from tqdm import tqdm
-import yaml
+from torch.utils.data import random_split
 
 class DistortionDataset(Dataset):
     def __init__(self, root_dir, transform=None):
@@ -54,43 +55,61 @@ class DistortionDataset(Dataset):
         return sample
 
 
-def get_dataloader():
+def get_dataloaders():
     # Read the necessary parameters from the config file
     with open("config.yml", 'r') as file:
-        conf = yaml.safe_load(file)["data"]
+        conf = yaml.safe_load(file)
 
-    input_width = conf["input_width"]
-    input_height = conf["input_height"]
+    input_width = conf["data"]["input_width"]
+    input_height = conf["data"]["input_height"]
 
-    batch_size = conf["batch_size"]
+    batch_size = conf["classifier"]["batch_size"]
+    train_ratio = conf["classifier"]["train_ratio"]
+    val_ratio = conf["classifier"]["val_ratio"]
+    test_ratio = conf["classifier"]["test_ratio"]
 
     # Define paths to deformation and texture folders
-    deformation_folder = conf["deformation_folder"]
-    texture_folder = conf["texture_folder"]
+    deformation_folder = conf["data"]["deformation_folder"]
+    texture_folder = conf["data"]["texture_folder"]
+    none_folder = conf["data"]["none_folder"]
 
     # Define transformation to be applied to the images
     data_transform = transforms.Compose([
-        transforms.Resize((input_width, input_height))
+        transforms.Resize((input_width, input_height)),
+        transforms.ToTensor()
     ])
 
     # Create dataset instances for deformation and texture
     deformation_dataset = DistortionDataset(root_dir=deformation_folder, transform=data_transform)
     texture_dataset = DistortionDataset(root_dir=texture_folder, transform=data_transform)
-    distortion_dataset = ConcatDataset([deformation_dataset, texture_dataset])
+    none_dataset = DistortionDataset(root_dir=none_folder, transform=data_transform)
+
+    distortion_dataset = ConcatDataset([deformation_dataset, texture_dataset, none_dataset])
+
+    train_size = int(train_ratio * len(distortion_dataset))
+    val_size = int(val_ratio * len(distortion_dataset))
+    test_size = len(distortion_dataset) - train_size - val_size
+    print(f"train size: {train_size}, val size: {val_size}, test size: {test_size}")
+    train_dataset, val_dataset, test_dataset = \
+        random_split(distortion_dataset, [train_size, val_size, test_size])
 
     # Create data loaders
-    distortion_loader = DataLoader(distortion_dataset, batch_size=batch_size, shuffle=True, collate_fn=lambda x: x)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=lambda x: x)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True, collate_fn=lambda x: x)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, collate_fn=lambda x: x)
 
-    # for batch in tqdm(distortion_loader):
+    # transform = transforms.ToPILImage()
+    # for batch in tqdm(train_loader):
     #     print(len(batch))
     #     for sample in batch:
-    #         img = sample['distorted'][0]
+    #         print(sample['label'])
+    #         img = transform(sample['distorted'][0])
     #         img.show()
 
-    return distortion_loader
+    return train_loader, val_loader, test_loader
 
 def main():
-    get_dataloader()
+    get_dataloaders()
 
 if __name__ == '__main__':
     main()
