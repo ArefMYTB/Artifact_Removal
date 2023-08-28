@@ -20,13 +20,17 @@ class DistortionDataset(Dataset):
         folder_path = os.path.join(self.root_dir, folder_name)
 
         distorted_images = []
+        flawless_images = []
         mask_images = []
         original_images = []
-
+        print(folder_path)
         for file in os.listdir(folder_path):
             if file.startswith("distorted"):
                 distorted_img = Image.open(os.path.join(folder_path, file))
                 distorted_images.append(distorted_img)
+            if file.startswith("flawless"):
+                flawless_img = Image.open(os.path.join(folder_path, file))
+                flawless_images.append(flawless_img)
             elif file.startswith("mask"):
                 mask_img = Image.open(os.path.join(folder_path, file))
                 mask_images.append(mask_img)
@@ -36,12 +40,14 @@ class DistortionDataset(Dataset):
 
         sample = {
             'distorted': distorted_images,
+            'flawless': flawless_images,
             'mask': mask_images,
             'original': original_images
         }
 
         if self.transform:
             sample['distorted'] = [self.transform(img) for img in sample['distorted']]
+            sample['flawless'] = [self.transform(img) for img in sample['flawless']]
             sample['mask'] = [self.transform(img) for img in sample['mask']]
             sample['original'] = [self.transform(img) for img in sample['original']]
 
@@ -50,7 +56,7 @@ class DistortionDataset(Dataset):
 def main():
     # Define transformation to be applied to the images
     data_transform = transforms.Compose([
-        transforms.Resize((256, 256)),
+        transforms.Resize((748, 512)),
         transforms.ToTensor(),
     ])
 
@@ -67,21 +73,23 @@ def main():
     deformation_loader = DataLoader(deformation_dataset, batch_size=batch_size, shuffle=True)
     texture_loader = DataLoader(texture_dataset, batch_size=batch_size, shuffle=True)
 
-    batch = next(iter(deformation_loader))
-    # print(batch['mask'][0].shape)
-    batch_tensor = batch['distorted'][0]
-
+    # batch = next(iter(deformation_loader))
+    # # print(batch['mask'][0].shape)
+    # batch_tensor = batch['distorted'][0]
+    #
     # Convert tensor to a PIL image
     transform = transforms.ToPILImage()
-    # pil_image = transform(transposed_image_tensor)
+    # # pil_image = transform(transposed_image_tensor)
+    #
+    # for i in range(batch_tensor.size(0)):
+    #     image_tensor = batch_tensor[i]
+    #     pil_image = transform(image_tensor)
+    #     pil_image.show()
 
-    for i in range(batch_tensor.size(0)):
-        image_tensor = batch_tensor[i]
+    for batch in tqdm(deformation_loader):
+        image_tensor = batch['distorted'][0][0]
         pil_image = transform(image_tensor)
         pil_image.show()
-
-    # for batch in tqdm(deformation_loader):
-    #     pass
 
     # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     #
