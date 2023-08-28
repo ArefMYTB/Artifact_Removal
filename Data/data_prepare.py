@@ -3,7 +3,8 @@ from PIL import Image
 import torch
 from torch.utils.data import Dataset, DataLoader
 import torchvision.transforms as transforms
-
+from tqdm import tqdm
+import matplotlib.pyplot as plt
 
 class DistortionDataset(Dataset):
     def __init__(self, root_dir, transform=None):
@@ -54,8 +55,8 @@ def main():
     ])
 
     # Define paths to deformation and texture folders
-    deformation_folder = 'path_to_deformation_folder'
-    texture_folder = 'path_to_texture_folder'
+    deformation_folder = 'Dataset/DHI/Deformation'
+    texture_folder = 'Dataset/DHI/Texture'
 
     # Create dataset instances for deformation and texture
     deformation_dataset = DistortionDataset(root_dir=deformation_folder, transform=data_transform)
@@ -66,7 +67,21 @@ def main():
     deformation_loader = DataLoader(deformation_dataset, batch_size=batch_size, shuffle=True)
     texture_loader = DataLoader(texture_dataset, batch_size=batch_size, shuffle=True)
 
-    return [deformation_loader, texture_loader]
+    batch = next(iter(deformation_loader))
+    # print(batch['mask'][0].shape)
+    batch_tensor = batch['distorted'][0]
+
+    # Convert tensor to a PIL image
+    transform = transforms.ToPILImage()
+    # pil_image = transform(transposed_image_tensor)
+
+    for i in range(batch_tensor.size(0)):
+        image_tensor = batch_tensor[i]
+        pil_image = transform(image_tensor)
+        pil_image.show()
+
+    # for batch in tqdm(deformation_loader):
+    #     pass
 
     # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     #
