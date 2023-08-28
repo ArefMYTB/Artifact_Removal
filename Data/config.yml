@@ -1,0 +1,7 @@
+data:
+  distortion_folder: Dataset/DHI # if you want the whole dataset
+  deformation_folder: Dataset/DHI/Deformation
+  texture_folder: Dataset/DHI/Texture
+  input_width: 256
+  input_height: 256
+  batch_size: 32
