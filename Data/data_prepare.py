@@ -1,10 +1,9 @@
 import os
 from PIL import Image
-import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, ConcatDataset
 import torchvision.transforms as transforms
 from tqdm import tqdm
-import matplotlib.pyplot as plt
+import yaml
 
 class DistortionDataset(Dataset):
     def __init__(self, root_dir, transform=None):
@@ -23,7 +22,7 @@ class DistortionDataset(Dataset):
         flawless_images = []
         mask_images = []
         original_images = []
-        print(folder_path)
+        
         for file in os.listdir(folder_path):
             if file.startswith("distorted"):
                 distorted_img = Image.open(os.path.join(folder_path, file))
@@ -42,7 +41,8 @@ class DistortionDataset(Dataset):
             'distorted': distorted_images,
             'flawless': flawless_images,
             'mask': mask_images,
-            'original': original_images
+            'original': original_images,
+            'label': self.root_dir.split('/')[-1]
         }
 
         if self.transform:
@@ -53,55 +53,44 @@ class DistortionDataset(Dataset):
 
         return sample
 
-def main():
-    # Define transformation to be applied to the images
-    data_transform = transforms.Compose([
-        transforms.Resize((748, 512)),
-        transforms.ToTensor(),
-    ])
+
+def get_dataloader():
+    # Read the necessary parameters from the config file
+    with open("config.yml", 'r') as file:
+        conf = yaml.safe_load(file)["data"]
+
+    input_width = conf["input_width"]
+    input_height = conf["input_height"]
+
+    batch_size = conf["batch_size"]
 
     # Define paths to deformation and texture folders
-    deformation_folder = 'Dataset/DHI/Deformation'
-    texture_folder = 'Dataset/DHI/Texture'
+    deformation_folder = conf["deformation_folder"]
+    texture_folder = conf["texture_folder"]
+
+    # Define transformation to be applied to the images
+    data_transform = transforms.Compose([
+        transforms.Resize((input_width, input_height))
+    ])
 
     # Create dataset instances for deformation and texture
     deformation_dataset = DistortionDataset(root_dir=deformation_folder, transform=data_transform)
     texture_dataset = DistortionDataset(root_dir=texture_folder, transform=data_transform)
+    distortion_dataset = ConcatDataset([deformation_dataset, texture_dataset])
 
     # Create data loaders
-    batch_size = 32
-    deformation_loader = DataLoader(deformation_dataset, batch_size=batch_size, shuffle=True)
-    texture_loader = DataLoader(texture_dataset, batch_size=batch_size, shuffle=True)
+    distortion_loader = DataLoader(distortion_dataset, batch_size=batch_size, shuffle=True, collate_fn=lambda x: x)
 
-    # batch = next(iter(deformation_loader))
-    # # print(batch['mask'][0].shape)
-    # batch_tensor = batch['distorted'][0]
-    #
-    # Convert tensor to a PIL image
-    transform = transforms.ToPILImage()
-    # # pil_image = transform(transposed_image_tensor)
-    #
-    # for i in range(batch_tensor.size(0)):
-    #     image_tensor = batch_tensor[i]
-    #     pil_image = transform(image_tensor)
-    #     pil_image.show()
+    # for batch in tqdm(distortion_loader):
+    #     print(len(batch))
+    #     for sample in batch:
+    #         img = sample['distorted'][0]
+    #         img.show()
 
-    for batch in tqdm(deformation_loader):
-        image_tensor = batch['distorted'][0][0]
-        pil_image = transform(image_tensor)
-        pil_image.show()
+    return distortion_loader
 
-    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    #
-    # num_epochs = 10
-    # for epoch in range(num_epochs):
-    #     for batch_idx, (deformation_images, texture_images) in enumerate(zip(deformation_loader, texture_loader)):
-    #         deformation_images = torch.stack(deformation_images).to(device)
-    #         texture_images = torch.stack(texture_images).to(device)
-    #
-    #         # Your training/validation steps here
-    #         # Example: model.forward(deformation_images, texture_images)
-
+def main():
+    get_dataloader()
 
 if __name__ == '__main__':
     main()
