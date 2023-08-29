@@ -1,10 +1,9 @@
 import torch
-import torchvision.transforms as transforms
 import torchvision.models as models
 import torch.nn as nn
 import torch.optim as optim
-import tqdm
 import yaml
+from tqdm import tqdm
 from torchvision.models import ResNet50_Weights
 from torchsummary import summary
 from data_prepare import get_dataloaders
@@ -14,6 +13,8 @@ with open("config.yml", 'r') as file:
     conf = yaml.safe_load(file)["classifier"]
 
 num_epochs = conf["num_epochs"]
+
+label_mapping = {'Deformation': 0, 'Texture': 1, 'None': 2}
 
 # Load the pre-trained ResNet model
 model = models.resnet50(weights=ResNet50_Weights.DEFAULT)
@@ -38,14 +39,20 @@ train_loader, val_loader, test_loader = get_dataloaders()
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 
-# Training loop
-for epoch in range(num_epochs):
+# Training #######################################
+for epoch in tqdm(range(num_epochs)):
     for batch in train_loader:
-        # TODO: the following 3 lines must change!
         distorted_images = batch['distorted']
         mask_images = batch['mask']
+
         labels = batch['label']
-        inputs = torch.cat((distorted_images, mask_images), dim=1)
+        labels = [label_mapping[label] for label in labels]
+        labels = torch.tensor(labels)
+        
+        inputs = []
+        for distorted_image, mask_image in zip(distorted_images, mask_images):
+            inputs.append(torch.cat((distorted_image, mask_image), dim=0))
+        inputs = torch.stack(inputs)
 
         outputs = model(inputs)
 
@@ -55,5 +62,38 @@ for epoch in range(num_epochs):
         loss.backward()
         optimizer.step()
 
-# Evaluation
-# Similar steps for validation and testing data
+
+# Evaluation #####################################
+# Set the model to evaluation mode
+model.eval()
+
+# Initialize evaluation variables
+total_samples = 0
+correct_predictions = 0
+
+# Disable gradients for evaluation
+with torch.no_grad():
+    for batch in val_loader:
+        distorted_images = batch['distorted']
+        mask_images = batch['mask']
+        
+        labels = batch['label']
+        labels = [label_mapping[label] for label in labels]
+        labels = torch.tensor(labels)
+
+        inputs = []
+        for distorted_image, mask_image in zip(distorted_images, mask_images):
+            inputs.append(torch.cat((distorted_image, mask_image), dim=0))
+        inputs = torch.stack(inputs)
+
+        # Forward pass and prediction
+        outputs = model(inputs)
+        _, predicted_labels = torch.max(outputs, 1)
+
+        # Update evaluation variables
+        total_samples += labels.size(0)
+        correct_predictions += (predicted_labels == labels).sum().item()
+
+# Calculate accuracy
+accuracy = correct_predictions / total_samples
+print(f"Accuracy: {accuracy}")

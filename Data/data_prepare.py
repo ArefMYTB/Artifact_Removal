@@ -19,38 +19,36 @@ class DistortionDataset(Dataset):
         folder_name = self.folder_list[idx]
         folder_path = os.path.join(self.root_dir, folder_name)
 
-        distorted_images = []
-        flawless_images = []
-        mask_images = []
+        distorted_image = None
+        flawless_image = None
+        mask_image = None
         original_images = []
         
         for file in os.listdir(folder_path):
             if file.startswith("distorted"):
-                distorted_img = Image.open(os.path.join(folder_path, file))
-                distorted_images.append(distorted_img)
+                distorted_image = Image.open(os.path.join(folder_path, file))
             if file.startswith("flawless"):
-                flawless_img = Image.open(os.path.join(folder_path, file))
-                flawless_images.append(flawless_img)
+                flawless_image = Image.open(os.path.join(folder_path, file))
             elif file.startswith("mask"):
-                mask_img = Image.open(os.path.join(folder_path, file))
-                mask_images.append(mask_img)
+                mask_image = Image.open(os.path.join(folder_path, file))
+                mask_image = mask_image.convert('L')
             elif file.startswith("original"):
                 original_img = Image.open(os.path.join(folder_path, file))
                 original_images.append(original_img)
 
+        if self.transform:
+            distorted_image = self.transform(distorted_image)
+            flawless_image = self.transform(flawless_image)
+            mask_image = self.transform(mask_image)
+            original_images = [self.transform(img) for img in original_images]
+
         sample = {
-            'distorted': distorted_images,
-            'flawless': flawless_images,
-            'mask': mask_images,
+            'distorted': distorted_image,
+            'flawless': flawless_image,
+            'mask': mask_image,
             'original': original_images,
             'label': self.root_dir.split('/')[-1]
         }
-
-        if self.transform:
-            sample['distorted'] = [self.transform(img) for img in sample['distorted']]
-            sample['flawless'] = [self.transform(img) for img in sample['flawless']]
-            sample['mask'] = [self.transform(img) for img in sample['mask']]
-            sample['original'] = [self.transform(img) for img in sample['original']]
 
         return sample
 
@@ -113,11 +111,11 @@ def get_dataloaders():
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, collate_fn=custom_collate_fn)
 
     # transform = transforms.ToPILImage()
-    # for batch in tqdm(train_loader):
+    # for batch in tqdm(test_loader):
     #     print(len(batch))
     #     print(batch['label'])
-    #     for sample in batch['distorted']:
-    #         img = transform(sample[0])
+    #     for sample in batch['mask']:
+    #         img = transform(sample)
     #         img.show()
 
     return train_loader, val_loader, test_loader
