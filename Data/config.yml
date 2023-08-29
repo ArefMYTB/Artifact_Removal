@@ -5,9 +5,10 @@ data:
   input_width: 256
   input_height: 256
 classifier:
-  batch_size: 32
-  num_epochs: 10
+  batch_size: 4
+  num_epochs: 5
   train_ratio: 0.8
   val_ratio: 0.1
   test_ratio: 0.1
+  Pretrain_PATH: Pretrain_PATH/model.pth
   
