@@ -5,12 +5,13 @@ import torch.optim as optim
 import yaml
 from tqdm import tqdm
 from torchvision.models import ResNet50_Weights
-from torchsummary import summary
 from data_prepare import get_dataloaders
 
 # Read the necessary parameters from the config file
 with open("config.yml", 'r') as file:
     conf = yaml.safe_load(file)["classifier"]
+
+Pretrain_PATH = conf["Pretrain_PATH"]
 
 num_epochs = conf["num_epochs"]
 
@@ -48,7 +49,7 @@ for epoch in tqdm(range(num_epochs)):
         labels = batch['label']
         labels = [label_mapping[label] for label in labels]
         labels = torch.tensor(labels)
-        
+
         inputs = []
         for distorted_image, mask_image in zip(distorted_images, mask_images):
             inputs.append(torch.cat((distorted_image, mask_image), dim=0))
@@ -57,11 +58,12 @@ for epoch in tqdm(range(num_epochs)):
         outputs = model(inputs)
 
         loss = criterion(outputs, labels)
-        
+
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
+    torch.save(model, Pretrain_PATH)
 
 # Evaluation #####################################
 # Set the model to evaluation mode
@@ -76,7 +78,7 @@ with torch.no_grad():
     for batch in val_loader:
         distorted_images = batch['distorted']
         mask_images = batch['mask']
-        
+
         labels = batch['label']
         labels = [label_mapping[label] for label in labels]
         labels = torch.tensor(labels)
