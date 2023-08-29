@@ -93,17 +93,31 @@ def get_dataloaders():
     train_dataset, val_dataset, test_dataset = \
         random_split(distortion_dataset, [train_size, val_size, test_size])
 
+    def custom_collate_fn(batch):
+        distorted = [sample['distorted'] for sample in batch]
+        flawless = [sample['flawless'] for sample in batch]
+        mask = [sample['mask'] for sample in batch]
+        original = [sample['original'] for sample in batch]
+        label = [sample['label'] for sample in batch]
+        return {
+            'distorted': distorted,
+            'flawless': flawless,
+            'mask': mask,
+            'original': original,
+            'label': label
+        }
+
     # Create data loaders
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=lambda x: x)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True, collate_fn=lambda x: x)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, collate_fn=lambda x: x)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=custom_collate_fn)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True, collate_fn=custom_collate_fn)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, collate_fn=custom_collate_fn)
 
     # transform = transforms.ToPILImage()
     # for batch in tqdm(train_loader):
     #     print(len(batch))
-    #     for sample in batch:
-    #         print(sample['label'])
-    #         img = transform(sample['distorted'][0])
+    #     print(batch['label'])
+    #     for sample in batch['distorted']:
+    #         img = transform(sample[0])
     #         img.show()
 
     return train_loader, val_loader, test_loader
