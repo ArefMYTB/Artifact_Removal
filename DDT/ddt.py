@@ -43,6 +43,18 @@ def hed_condition(img):
     return hed_image
 
 
+def canny_condition(img):
+    canny_img_np = np.array(img)
+    # get canny image
+    canny_image = cv2.Canny(canny_img_np, 100, 200)
+    canny_image = canny_image[:, :, None]
+    canny_image = np.concatenate([canny_image, canny_image, canny_image], axis=2)
+
+    canny_image = Image.fromarray(canny_image)
+
+    return canny_image
+
+
 def pose_condition(img):
     print("pose_condition called")
 
@@ -51,11 +63,11 @@ def pose_condition(img):
     pose_real_image = img
 
     pose_image = openpose(pose_real_image)
-    pose_real_image = pose_real_image.resize(pose_image.size)
+    # pose_real_image = pose_real_image.resize(pose_image.size)
 
-    pose_mask = np.zeros_like(np.array(pose_image))
-    pose_mask[250:700, :, :] = 255
-    pose_mask = Image.fromarray(pose_mask)
+    # pose_mask = np.zeros_like(np.array(pose_image))
+    # pose_mask[250:700, :, :] = 255
+    # pose_mask = Image.fromarray(pose_mask)
 
     return pose_image
 
@@ -71,7 +83,7 @@ def reference_condition(reference_img):
 
 
 # get the distorted image and a corresponding mask
-def ddt(img, reference_img):
+def ddt(img, reference_img=None):
     # model = load_model()
     # predicted_label, probabilities = classify(model, img)
 
@@ -84,7 +96,7 @@ def ddt(img, reference_img):
     #     return [deformation_information, texture_information], probabilities
 
     # TODO there's a problem with condtions loading
-    return [[], [], [], []]
+    return [canny_condition(img), pose_condition(img)]
     # return [hed_condition(img), pose_condition(img), texture_condition(), reference_condition(reference_img)]
 
 
