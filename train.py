@@ -46,7 +46,7 @@ def main():
             flawless_images = batch_data['flawless'][0]
 
             # TODO get data from batch and process on them one by one
-
+            # TODO shuold get data first and transform it later. bc controlnet can only get image and not tensor
             # concat distorted image and corresponding mask
             ddt_input = torch.cat((distorted_images, mask_images), dim=0)
             ddt_input = torch.stack([ddt_input])
