@@ -82,7 +82,10 @@ def ddt(img, reference_img):
     #     deformation_information = deformation_info()
     #     texture_information = texture_info()
     #     return [deformation_information, texture_information], probabilities
-    return [hed_condition(img), pose_condition(img), texture_condition(), reference_condition(reference_img)]
+
+    # TODO there's a problem with condtions loading
+    return [[], [], [], []]
+    # return [hed_condition(img), pose_condition(img), texture_condition(), reference_condition(reference_img)]
 
 
 def main():
