@@ -53,7 +53,7 @@ def main():
             # get alpha
             alpha = model(ddt_input)
             # get conditions
-            conditions = ddt(ddt_input, reference_images)
+            conditions = ddt(distorted_images, reference_images)
 
             # Inpainting
             inpaint_result = inpaint(distorted_images, mask_images, conditions, alpha)
