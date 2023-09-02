@@ -6,6 +6,7 @@ import torchvision.transforms as transforms
 from tqdm import tqdm
 from torch.utils.data import random_split
 
+
 class DistortionDataset(Dataset):
     def __init__(self, root_dir, transform=None):
         self.root_dir = root_dir
@@ -22,8 +23,8 @@ class DistortionDataset(Dataset):
         distorted_image = None
         flawless_image = None
         mask_image = None
-        original_images = []
-        
+        reference_images = []
+
         for file in os.listdir(folder_path):
             if file.startswith("distorted"):
                 distorted_image = Image.open(os.path.join(folder_path, file))
@@ -32,21 +33,21 @@ class DistortionDataset(Dataset):
             elif file.startswith("mask"):
                 mask_image = Image.open(os.path.join(folder_path, file))
                 mask_image = mask_image.convert('L')
-            elif file.startswith("original"):
-                original_img = Image.open(os.path.join(folder_path, file))
-                original_images.append(original_img)
+            elif file.startswith("reference"):
+                reference_img = Image.open(os.path.join(folder_path, file))
+                reference_images.append(reference_img)
 
         if self.transform:
             distorted_image = self.transform(distorted_image)
             flawless_image = self.transform(flawless_image)
             mask_image = self.transform(mask_image)
-            original_images = [self.transform(img) for img in original_images]
+            reference_images = [self.transform(img) for img in reference_images]
 
         sample = {
             'distorted': distorted_image,
             'flawless': flawless_image,
             'mask': mask_image,
-            'original': original_images,
+            'reference': reference_images,
             'label': self.root_dir.split('/')[-1]
         }
 
@@ -61,15 +62,13 @@ def get_dataloaders():
     input_width = conf["data"]["input_width"]
     input_height = conf["data"]["input_height"]
 
-    batch_size = conf["classifier"]["batch_size"]
-    train_ratio = conf["classifier"]["train_ratio"]
-    val_ratio = conf["classifier"]["val_ratio"]
-    test_ratio = conf["classifier"]["test_ratio"]
+    batch_size = conf["model"]["batch_size"]
+    train_ratio = conf["model"]["train_ratio"]
+    val_ratio = conf["model"]["val_ratio"]
+    test_ratio = conf["model"]["test_ratio"]
 
     # Define paths to deformation and texture folders
-    deformation_folder = conf["data"]["deformation_folder"]
-    texture_folder = conf["data"]["texture_folder"]
-    none_folder = conf["data"]["none_folder"]
+    dataset_folder = conf["data"]["DHI_folder"]
 
     # Define transformation to be applied to the images
     data_transform = transforms.Compose([
@@ -77,12 +76,7 @@ def get_dataloaders():
         transforms.ToTensor()
     ])
 
-    # Create dataset instances for deformation and texture
-    deformation_dataset = DistortionDataset(root_dir=deformation_folder, transform=data_transform)
-    texture_dataset = DistortionDataset(root_dir=texture_folder, transform=data_transform)
-    none_dataset = DistortionDataset(root_dir=none_folder, transform=data_transform)
-
-    distortion_dataset = ConcatDataset([deformation_dataset, texture_dataset, none_dataset])
+    distortion_dataset = DistortionDataset(root_dir=dataset_folder, transform=data_transform)
 
     train_size = int(train_ratio * len(distortion_dataset))
     val_size = int(val_ratio * len(distortion_dataset))
@@ -95,13 +89,13 @@ def get_dataloaders():
         distorted = [sample['distorted'] for sample in batch]
         flawless = [sample['flawless'] for sample in batch]
         mask = [sample['mask'] for sample in batch]
-        original = [sample['original'] for sample in batch]
+        reference = [sample['reference'] for sample in batch]
         label = [sample['label'] for sample in batch]
         return {
             'distorted': distorted,
             'flawless': flawless,
             'mask': mask,
-            'original': original,
+            'reference': reference,
             'label': label
         }
 
@@ -118,10 +112,13 @@ def get_dataloaders():
     #         img = transform(sample)
     #         img.show()
 
+    print("Dataset loaded")
     return train_loader, val_loader, test_loader
+
 
 def main():
     get_dataloaders()
+
 
 if __name__ == '__main__':
     main()
