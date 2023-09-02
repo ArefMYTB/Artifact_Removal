@@ -1,4 +1,5 @@
 import torch
+import torchvision.transforms as transforms
 from DDT.model import get_model
 from DDT.ddt import ddt
 from Data.data_prepare import get_dataloaders
@@ -37,6 +38,8 @@ def main():
     # Initialize your dataset
     train_loader, val_loader, test_loader = get_dataloaders()
 
+    transform = transforms.ToTensor()
+
     # Training loop
     for epoch in range(num_epochs):
         for batch_data in train_loader:
@@ -46,9 +49,9 @@ def main():
             flawless_images = batch_data['flawless'][0]
 
             # TODO get data from batch and process on them one by one
-            # TODO shuold get data first and transform it later. bc controlnet can only get image and not tensor
+
             # concat distorted image and corresponding mask
-            ddt_input = torch.cat((distorted_images, mask_images), dim=0)
+            ddt_input = torch.cat((transform(distorted_images), transform(mask_images)), dim=0)
             ddt_input = torch.stack([ddt_input])
             # get alpha
             alpha = model(ddt_input)
@@ -56,7 +59,7 @@ def main():
             conditions = ddt(distorted_images, reference_images)
 
             # Inpainting
-            inpaint_result = inpaint(distorted_images, mask_images, conditions, alpha)
+            inpaint_result = inpaint(distorted_images, mask_images, conditions)
 
             # TODO new loss to find the cause of problem (Inpainting model or Coefficient generator)
 
