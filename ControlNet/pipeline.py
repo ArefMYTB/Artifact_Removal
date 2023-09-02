@@ -41,7 +41,7 @@ def inpaint(distorted_image, mask_image, conditions, alpha):
     generator = torch.manual_seed(0)
 
     result = controlNetInpaintPipeline(
-        text_prompt=text_prompt,
+        text_prompt,
         num_inference_steps=num_inference_steps,
         generator=generator,
         image=distorted_image,
