@@ -1,14 +1,16 @@
 import torch
 import torchvision.transforms as transforms
 from PIL import Image
+import numpy as np
 import yaml
+from controlnet_aux import OpenposeDetector, HEDdetector
 
 # Read the necessary parameters from the config file
 with open("config.yml", 'r') as file:
     conf = yaml.safe_load(file)
 
-Pretrain_PATH = conf["classifier"]["Pretrain_PATH"]
-label_mapping = {'Deformation': 0, 'Texture': 1, 'None': 2}
+Pretrain_PATH = conf["model"]["Pretrain_PATH"]
+label_mapping = {'HED': 0, 'Pose': 1, 'Texture': 2, 'Reference': 3}
 
 
 def load_model():
@@ -18,49 +20,69 @@ def load_model():
     return model
 
 
-# Use DDT Classifier to determine what kind of distortion we need to refine
+# Use DDT Classifier
 def classify(model, img):
     with torch.no_grad():
         output = model(img)
         _, predicted_labels = torch.max(output, 1)
 
-    class_labels = ['Distorted', 'Texture', 'None']
+    class_labels = ['Distorted', 'Pose', 'Texture', 'Reference']
     predicted_label = class_labels[predicted_labels]
 
     print(f'Predicted class: {predicted_label}')
     return predicted_label, output
 
 
-# necessary information for deform distortion
-def deformation_info():
-    print("Distorted function called")
+def hed_condition(img):
+    print("hed_condition called")
+
+    hed = HEDdetector.from_pretrained('lllyasviel/ControlNet')
+
+    hed_image = hed(img)
+
+    return hed_image
+
+
+def pose_condition(img):
+    print("pose_condition called")
+
+    openpose = OpenposeDetector.from_pretrained('lllyasviel/ControlNet')
+
+    pose_real_image = img
+
+    pose_image = openpose(pose_real_image)
+    pose_real_image = pose_real_image.resize(pose_image.size)
+
+    pose_mask = np.zeros_like(np.array(pose_image))
+    pose_mask[250:700, :, :] = 255
+    pose_mask = Image.fromarray(pose_mask)
+
+    return pose_image
+
+
+def texture_condition():
+    print("texture_condition called")
     return []
 
 
-# necessary information for texture distortion
-def texture_info():
-    print("Texture function called")
-    return []
-
-
-# necessary information for none distortion
-def none_info():
-    print("None function called")
+def reference_condition(reference_img):
+    print("reference_condition called")
     return []
 
 
 # get the distorted image and a corresponding mask
-def ddt(img):
-    model = load_model()
-    predicted_label, probabilities = classify(model, img)
+def ddt(img, reference_img):
+    # model = load_model()
+    # predicted_label, probabilities = classify(model, img)
 
-    if predicted_label == label_mapping['None']:
-        none_information = none_info()
-        return none_information, probabilities
-    else:
-        deformation_information = deformation_info()
-        texture_information = texture_info()
-        return [deformation_information, texture_information], probabilities
+    # if predicted_label == label_mapping['None']:
+    #     none_information = none_info()
+    #     return none_information, probabilities
+    # else:
+    #     deformation_information = deformation_info()
+    #     texture_information = texture_info()
+    #     return [deformation_information, texture_information], probabilities
+    return [hed_condition(img), pose_condition(img), texture_condition(), reference_condition(reference_img)]
 
 
 def main():
