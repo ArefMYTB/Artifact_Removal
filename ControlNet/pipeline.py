@@ -12,8 +12,9 @@ def load_controlnet():
     controlnet2 = ControlNetModel.from_pretrained(
         "fusing/stable-diffusion-v1-5-controlnet-openpose", torch_dtype=torch.float16
     )
-    controlnet3 = []
-    controlnet4 = []
+    # TODO load other condition pretraiend model
+    # controlnet3 = []
+    # controlnet4 = []
     controlnet = [controlnet1, controlnet2, controlnet3, controlnet4]
 
     # controlnet pipeline
