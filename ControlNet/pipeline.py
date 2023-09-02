@@ -15,7 +15,7 @@ def load_controlnet():
     # TODO load other condition pretraiend model
     # controlnet3 = []
     # controlnet4 = []
-    controlnet = [controlnet1, controlnet2, controlnet1, controlnet2]
+    controlnet = [controlnet1, controlnet2]
 
     # controlnet pipeline
     controlNetInpaintPipeline = StableDiffusionControlNetInpaintPipeline.from_pretrained(
