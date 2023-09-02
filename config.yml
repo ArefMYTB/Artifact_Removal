@@ -1,0 +1,13 @@
+data:
+  DHI_folder: Data/Dataset/DHI
+  input_width: 256
+  input_height: 256
+model:
+  batch_size: 4
+  num_epochs: 5
+  learning_rate: 0.001
+  train_ratio: 0.8
+  val_ratio: 0.1
+  test_ratio: 0.1
+  Pretrain_PATH: model.pth
+  
