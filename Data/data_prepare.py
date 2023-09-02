@@ -71,10 +71,7 @@ def get_dataloaders():
     dataset_folder = conf["data"]["DHI_folder"]
 
     # Define transformation to be applied to the images
-    data_transform = transforms.Compose([
-        transforms.Resize((input_width, input_height)),
-        transforms.ToTensor()
-    ])
+    data_transform = transforms.Resize((input_width, input_height))
 
     distortion_dataset = DistortionDataset(root_dir=dataset_folder, transform=data_transform)
 
