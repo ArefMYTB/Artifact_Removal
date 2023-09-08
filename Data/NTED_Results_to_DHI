@@ -1,0 +1,26 @@
+import os
+import shutil
+
+# Set the source and destination directories
+source_directory = 'Data/Dataset/demo_results'
+destination_directory = 'Data/Dataset/DHI2'
+
+# Iterate through all folders in the source directory
+for folder_name in os.listdir(source_directory):
+    source_folder_path = os.path.join(source_directory, folder_name)
+    # Check if the destination directory has a corresponding folder
+    destination_folder_path = os.path.join(destination_directory, folder_name)
+    if os.path.exists(destination_folder_path):
+        # List all files in the source folder
+        files_in_source = os.listdir(source_folder_path)
+        # Look for a file named "distorted" in the source folder
+        distorted_file = 'distorted.jpg'
+        source_file_path = os.path.join(source_folder_path, distorted_file)
+
+        # Check if the "distorted" file exists in the source folder
+        if os.path.isfile(source_file_path):
+            destination_file_path = os.path.join(destination_folder_path, distorted_file)
+            shutil.copy2(source_file_path, destination_file_path)
+            # print(f"Copied '{distorted_file}' to '{folder_name}'")
+    
+print("Copy process complete.")
