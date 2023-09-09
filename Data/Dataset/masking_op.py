@@ -74,23 +74,25 @@ def write_file(file, count):
 
 
 # Define the path of the dataset and mask
-IMG_PATH = 'DHI/'
+IMG_PATH = 'DHI2/'
 
 COUNTER_FILE = "counter_file.txt"  # counter file to pause and resume mask operation
-BREAK_LIMIT = 15  # Program exits after every 20 images
+BREAK_LIMIT = 10000  # Program exits after every 20 images
 
 
 def main():
 
     # Load the image and store into a variable
     img_name = read_file(COUNTER_FILE) + 1
+    print(img_name)
     OCCURRENCES = 0
     mask_count = 1
-    last_data_number = len(os.listdir('DHI'))
+    last_data_number = len(os.listdir(IMG_PATH))
     FLAG = "A"
     while img_name:
         if img_name > BREAK_LIMIT:
             print('done')
+            write_file(COUNTER_FILE, img_name-1)
             sys.exit(1)
         try:
             image = cv2.imread(IMG_PATH + str(img_name) + '/distorted' + ".jpg")
