@@ -74,7 +74,7 @@ def write_file(file, count):
 
 
 # Define the path of the dataset and mask
-IMG_PATH = 'result/'
+IMG_PATH = 'DHI/'
 
 COUNTER_FILE = "counter_file.txt"  # counter file to pause and resume mask operation
 BREAK_LIMIT = 15  # Program exits after every 20 images
@@ -86,7 +86,7 @@ def main():
     img_name = read_file(COUNTER_FILE) + 1
     OCCURRENCES = 0
     mask_count = 1
-    last_data_number = len(os.listdir('result'))
+    last_data_number = len(os.listdir('DHI'))
     FLAG = "A"
     while img_name:
         if img_name > BREAK_LIMIT:
