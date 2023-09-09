@@ -74,7 +74,7 @@ def write_file(file, count):
 
 
 # Define the path of the dataset and mask
-IMG_PATH = 'DHI/'
+IMG_PATH = 'result/'
 
 COUNTER_FILE = "counter_file.txt"  # counter file to pause and resume mask operation
 BREAK_LIMIT = 15  # Program exits after every 20 images
@@ -86,23 +86,32 @@ def main():
     img_name = read_file(COUNTER_FILE) + 1
     OCCURRENCES = 0
     mask_count = 1
-    last_data_number = 15
+    last_data_number = len(os.listdir('result'))
     FLAG = "A"
     while img_name:
         if img_name > BREAK_LIMIT:
             print('done')
             sys.exit(1)
         try:
-            image = cv2.imread(IMG_PATH + str(img_name) + '/distorted' + ".png")
+            image = cv2.imread(IMG_PATH + str(img_name) + '/distorted' + ".jpg")
             # print(IMG_PATH + str(img_name))
 
             if image is None:
-                # write_file(COUNTER_FILE, img_name-1)
+                write_file(COUNTER_FILE, img_name-1)
                 print('Failed to load image file:', image)
                 sys.exit(1)
 
             # Create an image for sketching the mask
             image_mark = image.copy()
+            
+            # show flawless image
+            flawless = cv2.imread(IMG_PATH + str(img_name) + '/flawless' + ".jpg")
+            flawless_mark = flawless.copy()
+            cv2.namedWindow('Flawless',cv2.WINDOW_NORMAL)
+            cv2.imshow('Flawless', flawless_mark)
+            
+            
+            
             sketch = Sketcher('Image', [image_mark], lambda: ((175, 160, 255), 255))
 
             # Sketch a mask
@@ -119,7 +128,7 @@ def main():
                     image_mark[:] = image
                     sketch.show()
                 if ch == ord("z"):  # z - exit program
-                    # write_file(COUNTER_FILE, img_name-1)
+                    write_file(COUNTER_FILE, img_name-1)
                     print("Exited at " + str(img_name-1))
                     sys.exit(1)
 
