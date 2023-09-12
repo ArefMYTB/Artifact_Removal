@@ -16,7 +16,7 @@ ROOT_DIR = args.root_dir
 FLAWLESS_KEYWORD    = 'flawless'
 DISTORTED_KEYWORD   = 'distorted'
 MASK_KEYWORD        = 'mask'
-REFERENCE_KEYWORD   = 'original'
+REFERENCE_KEYWORD   = 'reference'
 
 PROMPT = "high quality, detailed, professional photograph of a woman standing"
 
