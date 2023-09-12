@@ -2,15 +2,18 @@ import os
 import shutil
 import argparse
 import json
+from PIL import Image, ImageOps
 
 # Initialize the arg parser
 parser = argparse.ArgumentParser(description='Prepare the dataset to be uploaded to the 🤗')
 
 parser.add_argument('--root_dir', type=str, help='The directory path to the original dataset')
+parser.add_argument('--resolution', type=int, help='The final resolution of the processed images')
 
 args = parser.parse_args()
 
 ROOT_DIR = args.root_dir
+RESOLUTION = args.resolution
 
 
 FLAWLESS_KEYWORD    = 'flawless'
@@ -35,50 +38,61 @@ if not os.path.exists(REFERENCE_KEYWORD):
     os.makedirs(REFERENCE_KEYWORD)
 
 
+# Methods to resize the image with padding
+def resize_with_padding(img, expected_size):
+    img.thumbnail((expected_size[0], expected_size[1]))
+    delta_width = expected_size[0] - img.size[0]
+    delta_height = expected_size[1] - img.size[1]
+    pad_width = delta_width // 2
+    pad_height = delta_height // 2
+    padding = (pad_width, pad_height, delta_width - pad_width, delta_height - pad_height)
+    return ImageOps.expand(img, padding)
+
+
 # Copy the files into their corresponding directory
 counter = 0
 for subdir, dirs, files in os.walk(ROOT_DIR):
-    reference_images = []
-    mask_image = None
-    distorted_image = None
-    flawless_image = None
+    reference_files = []
+    mask_file = None
+    distorted_file = None
+    flawless_file = None
     for file in files:
         if file.startswith(REFERENCE_KEYWORD):
-            reference_images.append(file)
+            reference_files.append(file)
         elif file.startswith(MASK_KEYWORD):
-            mask_image = file
+            mask_file = file
         elif file.startswith(DISTORTED_KEYWORD):
-            distorted_image = file
+            distorted_file = file
         elif file.startswith(FLAWLESS_KEYWORD):
-            flawless_image = file
+            flawless_file = file
 
-    if len(reference_images) == 0 or mask_image == None or \
-        distorted_image == None or flawless_image == None:
+    if len(reference_files) == 0 or mask_file == None or \
+        distorted_file == None or flawless_file == None:
         continue
 
-    for ri in reference_images:
-        shutil.copy(
-            os.path.join(subdir, ri), 
-            os.path.join(REFERENCE_KEYWORD, f'{counter}.jpg')
-        )
-        shutil.copy(
-            os.path.join(subdir, mask_image), 
-            os.path.join(MASK_KEYWORD, f'{counter}.jpg')
-        )
-        shutil.copy(
-            os.path.join(subdir, distorted_image), 
-            os.path.join(DISTORTED_KEYWORD, f'{counter}.jpg')
-        )
-        shutil.copy(
-            os.path.join(subdir, flawless_image), 
-            os.path.join(FLAWLESS_KEYWORD, f'{counter}.jpg')
-        )
+    for reference_file in reference_files:
+        reference_image = Image.open(os.path.join(subdir, reference_file))
+        reference_image = resize_with_padding(reference_image, (RESOLUTION, RESOLUTION))
+        reference_image.save(os.path.join(REFERENCE_KEYWORD, f'{counter}.jpg'))
+
+        mask_image = Image.open(os.path.join(subdir, mask_file))
+        mask_image = resize_with_padding(mask_image, (RESOLUTION, RESOLUTION))
+        mask_image.save(os.path.join(MASK_KEYWORD, f'{counter}.jpg'))
+
+        distorted_image = Image.open(os.path.join(subdir, distorted_file))
+        distorted_image = resize_with_padding(distorted_image, (RESOLUTION, RESOLUTION))
+        distorted_image.save(os.path.join(DISTORTED_KEYWORD, f'{counter}.jpg'))
+
+        flawless_image = Image.open(os.path.join(subdir, flawless_file))
+        flawless_image = resize_with_padding(flawless_image, (RESOLUTION, RESOLUTION))
+        flawless_image.save(os.path.join(FLAWLESS_KEYWORD, f'{counter}.jpg'))
         
         counter += 1
 
 print(f"Finished processing the dataset. Total number of samples: {counter}")
 
 
+# Zip the directories
 shutil.make_archive(FLAWLESS_KEYWORD, 'zip', FLAWLESS_KEYWORD)
 shutil.make_archive(DISTORTED_KEYWORD, 'zip', DISTORTED_KEYWORD)
 shutil.make_archive(MASK_KEYWORD, 'zip', MASK_KEYWORD)
