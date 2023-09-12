@@ -2,6 +2,7 @@ import os
 import shutil
 import argparse
 import json
+
 from PIL import Image, ImageOps
 
 # Initialize the arg parser
@@ -39,14 +40,21 @@ if not os.path.exists(REFERENCE_KEYWORD):
 
 
 # Methods to resize the image with padding
-def resize_with_padding(img, expected_size):
-    img.thumbnail((expected_size[0], expected_size[1]))
-    delta_width = expected_size[0] - img.size[0]
-    delta_height = expected_size[1] - img.size[1]
-    pad_width = delta_width // 2
-    pad_height = delta_height // 2
-    padding = (pad_width, pad_height, delta_width - pad_width, delta_height - pad_height)
-    return ImageOps.expand(img, padding)
+def resize_with_padding(img, color='white'):
+    expected_size = max(img.width, img.height)
+
+    bordered_image = Image.new(
+        "RGB", 
+        (expected_size, expected_size), 
+        (255, 255, 255) if color == 'white' else (0, 0, 0)
+    )
+    
+    width_offset = (expected_size - img.width) // 2
+    height_offset = (expected_size - img.height) // 2
+    
+    bordered_image.paste(img, (width_offset, height_offset))
+
+    return bordered_image.resize((RESOLUTION, RESOLUTION))
 
 
 # Copy the files into their corresponding directory
@@ -66,25 +74,24 @@ for subdir, dirs, files in os.walk(ROOT_DIR):
         elif file.startswith(FLAWLESS_KEYWORD):
             flawless_file = file
 
-    if len(reference_files) == 0 or mask_file == None or \
-        distorted_file == None or flawless_file == None:
+    if len(reference_files) == 0 or mask_file == None or distorted_file == None or flawless_file == None:
         continue
 
     for reference_file in reference_files:
         reference_image = Image.open(os.path.join(subdir, reference_file))
-        reference_image = resize_with_padding(reference_image, (RESOLUTION, RESOLUTION))
+        reference_image = resize_with_padding(reference_image)
         reference_image.save(os.path.join(REFERENCE_KEYWORD, f'{counter}.jpg'))
 
         mask_image = Image.open(os.path.join(subdir, mask_file))
-        mask_image = resize_with_padding(mask_image, (RESOLUTION, RESOLUTION))
+        mask_image = resize_with_padding(mask_image, 'black')
         mask_image.save(os.path.join(MASK_KEYWORD, f'{counter}.jpg'))
 
         distorted_image = Image.open(os.path.join(subdir, distorted_file))
-        distorted_image = resize_with_padding(distorted_image, (RESOLUTION, RESOLUTION))
+        distorted_image = resize_with_padding(distorted_image)
         distorted_image.save(os.path.join(DISTORTED_KEYWORD, f'{counter}.jpg'))
 
         flawless_image = Image.open(os.path.join(subdir, flawless_file))
-        flawless_image = resize_with_padding(flawless_image, (RESOLUTION, RESOLUTION))
+        flawless_image = resize_with_padding(flawless_image)
         flawless_image.save(os.path.join(FLAWLESS_KEYWORD, f'{counter}.jpg'))
         
         counter += 1
