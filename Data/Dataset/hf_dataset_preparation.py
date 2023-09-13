@@ -2,6 +2,7 @@ import os
 import shutil
 import argparse
 import json
+from tqdm import tqdm
 
 from PIL import Image, ImageOps
 
@@ -59,7 +60,7 @@ def resize_with_padding(img, color='white'):
 
 # Copy the files into their corresponding directory
 counter = 0
-for subdir, dirs, files in os.walk(ROOT_DIR):
+for subdir, dirs, files in tqdm(os.walk(ROOT_DIR)):
     reference_files = []
     mask_file = None
     distorted_file = None
@@ -100,10 +101,10 @@ print(f"Finished processing the dataset. Total number of samples: {counter}")
 
 
 # Zip the directories
-shutil.make_archive(FLAWLESS_KEYWORD, 'zip', FLAWLESS_KEYWORD)
-shutil.make_archive(DISTORTED_KEYWORD, 'zip', DISTORTED_KEYWORD)
-shutil.make_archive(MASK_KEYWORD, 'zip', MASK_KEYWORD)
-shutil.make_archive(REFERENCE_KEYWORD, 'zip', REFERENCE_KEYWORD)
+shutil.make_archive(FLAWLESS_KEYWORD, 'zip', './', FLAWLESS_KEYWORD)
+shutil.make_archive(DISTORTED_KEYWORD, 'zip', './', DISTORTED_KEYWORD)
+shutil.make_archive(MASK_KEYWORD, 'zip', './', MASK_KEYWORD)
+shutil.make_archive(REFERENCE_KEYWORD, 'zip', './', REFERENCE_KEYWORD)
 
 print("Archived all the directories!")
 
