@@ -5,10 +5,19 @@
 # dataset folder must contain images with name as numbers starting from 1,2,3...
 '''
 Keys:
-  r     - Mask the image
   SPACE - Reset the inpainting mask
   ESC   - Skip current image
   z     - Exit program
+  +     - Increase mouse size
+  -     - Decrease mouse size
+
+Masks:
+  h     - hand
+  s     - shirt
+  t     - trousers
+  o     - shoe
+  i     - hair
+  f     - face
 '''
 from __future__ import print_function
  
@@ -25,6 +34,7 @@ class Sketcher:
         self.dests = dests
         self.colors_func = colors_func
         self.dirty = False
+        self.mouse_size = 25
         self.show()
         cv2.setMouseCallback(self.windowname, self.on_mouse)
  
@@ -41,7 +51,7 @@ class Sketcher:
  
         if self.prev_pt and flags & cv2.EVENT_FLAG_LBUTTON:
             for dst, color in zip(self.dests, self.colors_func()):
-                cv2.line(dst, self.prev_pt, pt, color, 25)
+                cv2.line(dst, self.prev_pt, pt, color, self.mouse_size)
             self.dirty = True
             self.prev_pt = pt
             self.show()
@@ -74,7 +84,7 @@ def write_file(file, count):
 
 
 # Define the path of the dataset and mask
-IMG_PATH = 'DHI2/'
+IMG_PATH = 'DHI/'
 
 COUNTER_FILE = "counter_file.txt"  # counter file to pause and resume mask operation
 BREAK_LIMIT = 10000  # Program exits after every 20 images
@@ -82,12 +92,16 @@ BREAK_LIMIT = 10000  # Program exits after every 20 images
 
 def main():
 
+    classes = ['hand', 'hair', 'face', 'shirt', 'trousers', 'shoe']
+    for c in classes:
+        if not os.path.exists(c):
+                os.makedirs(c)
+
     # Load the image and store into a variable
     img_name = read_file(COUNTER_FILE) + 1
     print(img_name)
     OCCURRENCES = 0
     mask_count = 1
-    last_data_number = len(os.listdir(IMG_PATH))
     FLAG = "A"
     while img_name:
         if img_name > BREAK_LIMIT:
@@ -123,8 +137,32 @@ def main():
                     img_name += 1
                     mask_count = 1
                     break
-                if ch == ord('r'):  # r - mask the image
-                    FLAG = 'y'
+                if ch == 43:  
+                    sketch.mouse_size += 5
+                    continue
+                if ch == 45:  
+                    sketch.mouse_size -= 5
+                    continue
+                if ch == ord('h'):  
+                    FLAG = 'hand'
+                    break
+                if ch == ord('s'):  
+                    FLAG = 'shirt'
+                    break
+                if ch == ord('t'):  
+                    FLAG = 'trousers'
+                    break
+                if ch == ord('o'):  
+                    FLAG = 'shoe'
+                    break
+                if ch == ord('i'):  
+                    FLAG = 'hair'
+                    break
+                if ch == ord('f'):  
+                    FLAG = 'face'
+                    break
+                if ch == ord('e'):
+                    FLAG = 'extra'
                     break
                 if ch == ord(' '):  # SPACE - reset the inpainting mask
                     image_mark[:] = image
@@ -152,36 +190,32 @@ def main():
             cv2.drawContours(filled_mask, cnt, -1, 255, -1)
 
             cv2.destroyAllWindows()
+            
+                
+            # Define the folders
+            last_data_number = len(os.listdir(FLAG)) + 1
+            destination_folder = FLAG + '/' + f'{last_data_number}'
+            source_folder = IMG_PATH + str(img_name)
+            # Check if the destination folder exists, and create it if it doesn't
+            if not os.path.exists(destination_folder):
+                os.makedirs(destination_folder)
 
-            # FLAG = cv2.waitKey()
-            if FLAG == "y":
-                if mask_count > 1:  # create a new folder
-                    # Define the folders
-                    last_data_number += 1
-                    destination_folder = IMG_PATH + f'{last_data_number}'
-                    source_folder = IMG_PATH + str(img_name)
-                    # Check if the destination folder exists, and create it if it doesn't
-                    if not os.path.exists(destination_folder):
-                        os.makedirs(destination_folder)
+            for file_name in os.listdir(source_folder):
+                source_file_path = os.path.join(source_folder, file_name)
+                destination_file_path = os.path.join(destination_folder, file_name)
 
-                    for file_name in os.listdir(source_folder):
-                        source_file_path = os.path.join(source_folder, file_name)
-                        destination_file_path = os.path.join(destination_folder, file_name)
+                # Copy the file
+                shutil.copy2(source_file_path, destination_file_path)
 
-                        # Copy the file
-                        shutil.copy2(source_file_path, destination_file_path)
+            cv2.imwrite(destination_folder + '/mask' + ".png", filled_mask)
+                
 
-                    cv2.imwrite(destination_folder + '/mask' + ".png", filled_mask)
-                else:
-                    cv2.imwrite(IMG_PATH + str(img_name) + '/mask' + ".png", filled_mask)
-
-                cv2.destroyAllWindows()
-                FLAG = "A"
-                mask_count += 1
-                continue
-            else:
-                cv2.destroyAllWindows()
-                continue
+            cv2.destroyAllWindows()
+            FLAG = "A"
+            mask_count += 1
+            continue
+            
+            
 
         except Exception as e:
             print(str(e) + "\nTrying again...")
