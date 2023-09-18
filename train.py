@@ -1,6 +1,6 @@
 import torch
 import torchvision.transforms as transforms
-from DDT.model import get_model
+from DDT.model import CoefficientGenerator
 from DDT.ddt import ddt
 from Data.data_prepare import get_dataloaders
 from ControlNet.pipeline import inpaint
@@ -26,12 +26,13 @@ def main():
     # Read the necessary parameters from the config file
     with open("config.yml", 'r') as file:
         conf = yaml.safe_load(file)["model"]
-    # Hyperparameters
+        
     learning_rate = conf["learning_rate"]
     num_epochs = conf["num_epochs"]
+    num_coefficients = 3 # TODO get this from config
 
     # Initialize your model
-    model = get_model()
+    model = CoefficientGenerator(num_output=num_coefficients)
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     criterion = torch.nn.MSELoss()
 
@@ -50,18 +51,14 @@ def main():
 
             # TODO get data from batch and process on them one by one
 
-            # concat distorted image and corresponding mask
-            ddt_input = torch.cat((transform(distorted_images), transform(mask_images)), dim=0)
-            ddt_input = torch.stack([ddt_input])
-            # get alpha
-            alpha = model(ddt_input)
+          
+            # get coefficients
+            alpha = model(distorted_images, mask_images)
             # get conditions
             conditions = ddt(distorted_images, reference_images)
 
             # Inpainting
-            inpaint_result = inpaint(distorted_images, mask_images, conditions)
-
-            # TODO new loss to find the cause of problem (Inpainting model or Coefficient generator)
+            inpaint_result = inpaint(distorted_images, mask_images, conditions, alpha)
 
             # Calculate the loss
             loss = criterion(inpaint_result, flawless_images)
@@ -74,9 +71,19 @@ def main():
             # Print loss for monitoring
             print(f'Epoch [{epoch + 1}/{num_epochs}], Loss: {loss.item()}')
 
-    # Save the trained model
-    torch.save(model.state_dict(), 'trained_model.pth')
+            # TODO set save_result and result_path in config
+            save_result = 10
+            result_path = "res"
+            if epoch == save_result:
+              inpaint_result.save(result_path+f"_{epoch}")
 
+            # TODO set save_model and checkpoints_path in config
+            save_model = 25
+            checkpoints_path = ""
+            if epoch == save_model:
+              torch.save(model.state_dict(), checkpoints_path+'trained_model'+f'_{epoch}'+'.pth')
+
+    torch.save(model.state_dict(), 'trained_model.pth')
 
 if __name__ == '__main__':
     main()
