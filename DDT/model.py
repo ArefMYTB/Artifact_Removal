@@ -53,7 +53,7 @@ class CoefficientGenerator(nn.Module):
 
         output = self.fc(combined_features)
 
-        return output
+        return output.tolist()[0]
 
 
 if __name__ == "__main__":
