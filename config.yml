@@ -10,4 +10,6 @@ model:
   val_ratio: 0.1
   test_ratio: 0.1
   Pretrain_PATH: model.pth
-  
+  num_coefficients: 6
+  batch_size: 8
+  dataset_name: NegarMov/DHI
