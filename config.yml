@@ -1,7 +1,7 @@
 data:
   DHI_folder: Data/Dataset/DHI
-  input_width: 256
-  input_height: 256
+  input_width: 512
+  input_height: 512
 model:
   batch_size: 4
   num_epochs: 5
@@ -13,3 +13,4 @@ model:
   num_coefficients: 6
   batch_size: 8
   dataset_name: NegarMov/DHI
+  resolution: 512
