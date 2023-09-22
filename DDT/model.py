@@ -19,42 +19,46 @@ class CoefficientGenerator(nn.Module):
         self.resnet100 = models.resnet101(pretrained=True)
         
         # TODO get this from config
-        freeze_layer_number = 70
-        # Freeze the first layers
-        self.freeze_layers(freeze_layer_number)
-        
-        # TODO get this from config
         img_size = 512
         # Initialize Vision Transformer (ViT)
-        self.vit = timm.create_model('vit_base_patch16_224', img_size=img_size, pretrained=True)
+        self.vit = timm.create_model('resnet101', pretrained=True)
+        self.vit = torch.nn.Sequential(*list(self.vit.children())[:-1])
 
         # Define attention mechanism for combining image and mask
-        self.attention = nn.MultiheadAttention(embed_dim=1000, num_heads=8)
+        self.attention = nn.MultiheadAttention(embed_dim=2048, num_heads=8)
 
         # Output layer
-        self.fc = nn.Linear(1000, num_output)
+        self.fc = nn.Linear(2048, num_output)
+
+        # Initialize resnet_layers for feature extraction
+        self.resnet_layers = nn.Sequential(*list(self.resnet100.children())[:-1])  # Remove the last two layers
+        
+        # TODO get this from config
+        freeze_layer_number = 70
+        # Freeze the layers up to freeze_layer_number
+        self.freeze_layers(freeze_layer_number)
 
     def freeze_layers(self, num):
-        self.resnet_layers = nn.Sequential(*list(self.resnet100.children())[:num])
-        for param in self.resnet_layers.parameters():
+        for param in self.resnet_layers[:num].parameters():
             param.requires_grad = False
 
     def forward(self, image, mask):
-      
-        image_features = self.resnet100(image)
+        # Extract features from the ResNet model
+        image_features = self.resnet_layers(image).view(1, 2048)
+        print(f"image_features: {image_features.shape}")
 
         # Expand the mask to match the number of channels in the image
         mask = mask.expand_as(image)
-
-        mask_features = self.vit(mask)
+        print(f"mask: {mask.shape}")
+        with torch.no_grad():
+          mask_features = self.vit(mask)
 
         # Apply attention mechanism to combine image and mask features
         combined_features, _ = self.attention(image_features, mask_features, mask_features)
 
-        output = self.fc(combined_features)
+        output = self.fc(combined_features.view(combined_features.size(0), -1))  # Flatten combined_features
 
         return output.tolist()[0]
-
 
 if __name__ == "__main__":
   
