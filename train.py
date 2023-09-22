@@ -1,14 +1,19 @@
 import torch
 import torchvision.transforms as transforms
+import yaml
+
+from datasets import load_dataset
+from torch.utils.data import DataLoader
+
 from DDT.model import CoefficientGenerator
 from DDT.ddt import ddt
 from Data.data_prepare import get_dataloaders
 from ControlNet.pipeline import inpaint
-import yaml
 
 # get coefficient model from model.py in DDT ✅
 
 # get dataset from data_prepare.py in Data ✅
+
 # training loop ✅
 
 # run the model and generate coefficients ✅
@@ -22,6 +27,64 @@ import yaml
 # Loss on coefficient generator ✅
 
 
+def prepare_dataset(dataset_name):
+    dataset = load_dataset(
+        dataset_name,
+        None,
+        cache_dir=None,
+    )
+
+    def preprocess_train(examples):
+        transform = transforms.ToTensor()
+
+        flawless_images = [image.convert("RGB") for image in examples['flawless']]
+        flawless_images = [transform(image) for image in flawless_images]
+
+        distorted_images = [image.convert("RGB") for image in examples['distorted']]
+        distorted_images = [transform(image) for image in distorted_images]
+
+        reference_images = [image.convert("RGB") for image in examples['reference']]
+        reference_images = [transform(image) for image in reference_images]
+
+        mask_images = [image.convert("L") for image in examples['mask']]
+        mask_images = [transform(image) for image in mask_images]
+
+        examples["flawless"] = flawless_images
+        examples["distorted"] = distorted_images
+        examples["reference"] = reference_images
+        examples["mask"] = mask_images
+
+        return examples
+
+    return dataset["train"].with_transform(preprocess_train)
+
+
+def get_loaders(train_dataset, batch_size):
+    def collate_fn(examples):
+        flawless = [example["flawless"] for example in examples]
+        distorted = [example["distorted"] for example in examples]
+        reference = [example["reference"] for example in examples]
+        mask = [example["mask"] for example in examples]
+        prompt = [example["prompt"] for example in examples]
+
+        return {
+            "flawless": flawless,
+            "distorted": distorted,
+            "reference": reference,
+            "mask": mask,
+            "prompt": prompt,
+        }
+
+    train_dataloader = DataLoader(
+        train_dataset,
+        shuffle=True,
+        collate_fn=collate_fn,
+        batch_size=batch_size,
+    )
+
+    return train_dataloader
+
+
 def main():
     # Read the necessary parameters from the config file
     with open("config.yml", 'r') as file:
@@ -29,31 +92,36 @@ def main():
         
     learning_rate = conf["learning_rate"]
     num_epochs = conf["num_epochs"]
-    num_coefficients = 3 # TODO get this from config
+    num_coefficients = conf["num_coefficients"]
+    batch_size = conf["batch_size"]
+
+    dataset_name = conf["dataset_name"]
+    resolution = conf["resolution"]
 
     # Initialize your model
-    model = CoefficientGenerator(num_output=num_coefficients)
+    model = CoefficientGenerator(resolution=resolution, num_output=num_coefficients)
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     criterion = torch.nn.MSELoss()
 
     # Initialize your dataset
-    train_loader, val_loader, test_loader = get_dataloaders()
-
-    transform = transforms.ToTensor()
+    train_dataset = prepare_dataset(dataset_name)
+    
+    # TODO: change to train_loader, val_loader, test_loader
+    train_loader = get_loaders(train_dataset, batch_size)
 
     # Training loop
     for epoch in range(num_epochs):
         for batch_data in train_loader:
-            distorted_images = batch_data['distorted'][0]
-            mask_images = batch_data['mask'][0]
-            reference_images = batch_data['reference'][0]
-            flawless_images = batch_data['flawless'][0]
+            distorted_images = batch_data['distorted']
+            mask_images = batch_data['mask']
+            reference_images = batch_data['reference']
+            flawless_images = batch_data['flawless']
 
             # TODO get data from batch and process on them one by one
-
           
             # get coefficients
             alpha = model(distorted_images, mask_images)
+
             # get conditions
             conditions = ddt(distorted_images, reference_images)
 
