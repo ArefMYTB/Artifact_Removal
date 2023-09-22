@@ -12,23 +12,24 @@ from PIL import Image
 import numpy as np
 
 class CoefficientGenerator(nn.Module):
-    def __init__(self, num_output=3):
+    def __init__(self, resolution, num_output=6):
         super(CoefficientGenerator, self).__init__()
         
         # Initialize a pre-trained ResNet-100 model
         self.resnet100 = models.resnet101(pretrained=True)
+        self.fc_in_features = self.resnet100.fc.in_features
         
-        # TODO get this from config
-        img_size = 512
+        self.resolution = resolution
+        
         # Initialize Vision Transformer (ViT)
         self.vit = timm.create_model('resnet101', pretrained=True)
         self.vit = torch.nn.Sequential(*list(self.vit.children())[:-1])
 
         # Define attention mechanism for combining image and mask
-        self.attention = nn.MultiheadAttention(embed_dim=2048, num_heads=8)
+        self.attention = nn.MultiheadAttention(embed_dim=self.fc_in_features, num_heads=8)
 
         # Output layer
-        self.fc = nn.Linear(2048, num_output)
+        self.fc = nn.Linear(self.fc_in_features, num_output)
 
         # Initialize resnet_layers for feature extraction
         self.resnet_layers = nn.Sequential(*list(self.resnet100.children())[:-1])  # Remove the last two layers
@@ -43,13 +44,15 @@ class CoefficientGenerator(nn.Module):
             param.requires_grad = False
 
     def forward(self, image, mask):
+        image = torch.stack(image)
+        mask = torch.stack(mask)
+
         # Extract features from the ResNet model
-        image_features = self.resnet_layers(image).view(1, 2048)
-        print(f"image_features: {image_features.shape}")
+        image_features = self.resnet_layers(image).view(image.shape[0], self.fc_in_features)
 
         # Expand the mask to match the number of channels in the image
         mask = mask.expand_as(image)
-        print(f"mask: {mask.shape}")
+        
         with torch.no_grad():
           mask_features = self.vit(mask)
 
