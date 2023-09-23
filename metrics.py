@@ -5,8 +5,7 @@ import numpy as np
 from imageio import imread
 from scipy import linalg
 from torch.nn.functional import adaptive_avg_pool2d
-from skimage.measure import compare_ssim
-from skimage.measure import compare_psnr
+from skimage import measure
 
 import glob
 import argparse
@@ -49,7 +48,7 @@ class FID():
     """
     def __init__(self):
         self.dims = 2048
-        self.batch_size = 64
+        self.batch_size = 1
         self.cuda = True
         self.verbose=False
 
@@ -280,13 +279,13 @@ class Reconstruction_Metrics():
         gts = gts.view(b*n, w, h).detach().cpu().numpy().astype(np.float32).transpose(1,2,0)
 
         if hasattr(self, 'ssim'):
-            ssim_value = compare_ssim(inputs, gts, data_range=self.data_range, 
+            ssim_value = measure.compare_ssim(inputs, gts, data_range=self.data_range, 
                             win_size=self.win_size, multichannel=self.multichannel) 
             result['ssim'] = ssim_value
 
 
         if hasattr(self, 'psnr'):
-            psnr_value = compare_psnr(inputs, gts, self.data_range)
+            psnr_value = measure.compare_psnr(inputs, gts, self.data_range)
             result['psnr'] = psnr_value
 
         if hasattr(self, 'l1'):
@@ -338,15 +337,15 @@ class Reconstruction_Metrics():
                     plt.title('Output')
                     plt.show()
 
-                psnr.append(compare_psnr(img_gt, img_pred, data_range=self.data_range))
-                ssim.append(compare_ssim(img_gt, img_pred, data_range=self.data_range, 
+                psnr.append(measure.compare_psnr(img_gt, img_pred, data_range=self.data_range))
+                ssim.append(measure.compare_ssim(img_gt, img_pred, data_range=self.data_range, 
                             win_size=self.win_size,multichannel=self.multichannel))
                 mae.append(compare_mae(img_gt, img_pred))
                 l1.append(compare_l1(img_gt, img_pred))
 
                 img_gt_256 = img_gt*255.0
                 img_pred_256 = img_pred*255.0
-                ssim_256.append(compare_ssim(img_gt_256, img_pred_256, gaussian_weights=True, sigma=1.2,
+                ssim_256.append(measure.compare_ssim(img_gt_256, img_pred_256, gaussian_weights=True, sigma=1.2,
                                 use_sample_covariance=False, multichannel=True,
                                 data_range=img_pred_256.max() - img_pred_256.min()))
                 if np.mod(index, 200) == 0:
@@ -481,7 +480,7 @@ class LPIPS():
         result=[]
 
 
-        d0 = len(files_1)
+        d0 = len(files_1) + 1
         if batch_size > d0:
             print(('Warning: batch size is bigger than the data size. '
                    'Setting batch size to data size'))
@@ -641,9 +640,9 @@ if __name__ == "__main__":
     lpips_obj = LPIPS()
     rec = Reconstruction_Metrics()
 
-    real_path = './deepfashion/train_256x256_pngs/'
-    gt_path = './deepfashion/test_256x256_pngs/'
-    distorated_path = './output_images_pngs/'
+    real_path = 'metric/GT/'
+    gt_path = 'metric/GT/'
+    distorated_path = 'metric/Distorted/'
 
     gt_list, distorated_list = preprocess_path_for_deform_task(gt_path, distorated_path)
 
