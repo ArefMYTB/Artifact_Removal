@@ -8,25 +8,28 @@ from controlnet_aux.processor import Processor
 #  "scribble_hed, "scribble_pidinet", "shuffle", "softedge_hed", "softedge_hedsafe",
 #  "softedge_pidinet", "softedge_pidsafe", "dwpose"]
 
-def controlnet_condition(img, processor_id):
-    processor = Processor(processor_id)
+class DDT:
 
-    processed_image = processor(img, to_pil=True)
-    return processed_image
-
-
-def ddt(img_batch, reference_img=None):
-    control_batch = []
-    for i, img in enumerate(img_batch):
-        canny_image = controlnet_condition(img[0], "canny")
-        hed_image = controlnet_condition(img[0], "softedge_hed")
-        lineart_realistic = controlnet_condition(img[0], "lineart_realistic")
-        normal_bae = controlnet_condition(img[0], "normal_bae") # little slow
-        pose_image = controlnet_condition(img[0], "openpose_full")
-        texture_image = reference_img[i]
+    def __init__(self):
+        self.canny_processor = Processor("canny")
+        self.softedge_hed_processor = Processor("softedge_hed")
+        self.lineart_realistic_processor = Processor("lineart_realistic")
+        self.normal_bae_processor = Processor("normal_bae")
+        self.pose_image_processor = Processor("openpose_full")
         
-        control_images = [canny_image, hed_image, lineart_realistic, normal_bae, pose_image, texture_image]
 
-        control_batch.append(control_images)
-    
-    return control_batch
+    def generate_conditions(self, img_batch, reference_img=None):
+        control_batch = []
+        for i, img in enumerate(img_batch):
+            canny_image = self.canny_processor(img[0], to_pil=True)
+            hed_image = self.softedge_hed_processor(img[0], to_pil=True)
+            lineart_realistic = self.lineart_realistic_processor(img[0], to_pil=True)
+            normal_bae = self.normal_bae_processor(img[0], to_pil=True)
+            pose_image = self.pose_image_processor(img[0], to_pil=True)
+            texture_image = reference_img[i]
+            
+            control_images = [canny_image, hed_image, lineart_realistic, normal_bae, pose_image] #, texture_image]
+
+            control_batch.append(control_images)
+        
+        return control_batch

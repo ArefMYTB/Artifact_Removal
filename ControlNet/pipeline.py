@@ -1,54 +1,57 @@
+import torch
+import torchvision.transforms as transforms
 from diffusers.pipelines.controlnet.pipeline_controlnet_inpaint import *
 # from diffusers import DDIMScheduler
 # from diffusers.utils import load_image
 
+class InpaintPipeline:
 
-# load controlnet and stable diffusion v1-5-inpainting
-def load_controlnet():
-    # load conditions: HED, Pose, Texture, Reference
-    controlnet1 = ControlNetModel.from_pretrained(
-        "fusing/stable-diffusion-v1-5-controlnet-hed", torch_dtype=torch.float16
-    )
-    controlnet2 = ControlNetModel.from_pretrained(
-        "fusing/stable-diffusion-v1-5-controlnet-openpose", torch_dtype=torch.float16
-    )
-    # TODO load other condition pretraiend model
-    # controlnet3 = []
-    # controlnet4 = []
-    controlnet = [controlnet1, controlnet2]
+    # load controlnet and stable diffusion v1-5-inpainting
+    def __init__(self):
+        # get text-prompt and num_inference_steps from config
+        self.num_inference_steps = 10
 
-    # controlnet pipeline
-    controlNetInpaintPipeline = StableDiffusionControlNetInpaintPipeline.from_pretrained(
-        "runwayml/stable-diffusion-inpainting", controlnet=controlnet, torch_dtype=torch.float16
-    )
+        # load conditions: HED, Pose, Texture, Reference
+        self.controlnet1 = ControlNetModel.from_pretrained("lllyasviel/sd-controlnet-hed", torch_dtype=torch.float16)
+        self.controlnet2 = ControlNetModel.from_pretrained("fusing/stable-diffusion-v1-5-controlnet-openpose", torch_dtype=torch.float16)
+        self.controlnet3 = ControlNetModel.from_pretrained("lllyasviel/sd-controlnet-canny", torch_dtype=torch.float16)
+        self.controlnet4 = ControlNetModel.from_pretrained("lllyasviel/control_v11p_sd15_lineart", torch_dtype=torch.float16)
+        self.controlnet5 = ControlNetModel.from_pretrained("lllyasviel/control_v11p_sd15_normalbae", torch_dtype=torch.float16)
 
-    # controlNetInpaintPipeline.scheduler = UniPCMultistepScheduler.from_config(pipe.scheduler.config)
+        self.controlnet = [self.controlnet1, self.controlnet2, self.controlnet3, self.controlnet4, self.controlnet5]
+        
+        self.controlNetInpaintPipeline = StableDiffusionControlNetInpaintPipeline.from_pretrained(
+            "SG161222/Realistic_Vision_V3.0_VAE", controlnet=self.controlnet, torch_dtype=torch.float16
+        )
 
-    # controlNetInpaintPipeline.enable_xformers_memory_efficient_attention()
-    return controlNetInpaintPipeline
+        self.controlNetInpaintPipeline.to('cuda')
+
+        # controlNetInpaintPipeline.scheduler = UniPCMultistepScheduler.from_config(pipe.scheduler.config)
+        # controlNetInpaintPipeline.enable_xformers_memory_efficient_attention()
 
 
-def inpaint(distorted_image, mask_image, conditions, alpha):
-    # get text-prompt and num_inference_steps from config
-    num_inference_steps = 30
-    text_prompt = ""
+    def inpaint(self, distorted_image, mask_image, conditions, prompt, alpha):        
+        # generate image
+        generator = torch.manual_seed(0)
 
-    # load controlnet pretrained conditions and Stable-Diffusion-Inpainting
-    controlNetInpaintPipeline = load_controlnet()
-    controlNetInpaintPipeline.to('cuda')
+        transform = transforms.Compose([
+            transforms.ToTensor()
+        ])
 
-    # generate image
-    generator = torch.manual_seed(0)
+        result_batch = []
+        for i in range(len(distorted_image)):
+            result = self.controlNetInpaintPipeline(
+                prompt[i],
+                num_inference_steps=self.num_inference_steps,
+                generator=generator,
+                image=distorted_image[i],
+                mask_image=mask_image[i],
+                control_image=conditions[i],
+                controlnet_conditioning_scale=alpha[i]
+            ).images[0]
 
-    result = controlNetInpaintPipeline(
-        text_prompt,
-        num_inference_steps=num_inference_steps,
-        generator=generator,
-        image=distorted_image,
-        mask_image=mask_image,
-        control_image=conditions,
-        controlnet_conditioning_scale=alpha
-    ).images[0]
+            result_batch.append(transform(result).requires_grad_(True))
 
-    return result
+        result_batch = torch.stack(result_batch)
+        return result_batch
 

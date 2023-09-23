@@ -6,9 +6,8 @@ from datasets import load_dataset
 from torch.utils.data import DataLoader
 
 from DDT.model import CoefficientGenerator
-from DDT.ddt import ddt
-from Data.data_prepare import get_dataloaders
-from ControlNet.pipeline import inpaint
+from DDT.ddt import DDT
+from ControlNet.pipeline import InpaintPipeline
 
 # get coefficient model from model.py in DDT ✅
 
@@ -109,6 +108,9 @@ def main():
     # TODO: change to train_loader, val_loader, test_loader
     train_loader = get_loaders(train_dataset, batch_size)
 
+    inpaint_pipeline = InpaintPipeline()
+    ddt = DDT()
+
     # Training loop
     for epoch in range(num_epochs):
         for batch_data in train_loader:
@@ -116,17 +118,18 @@ def main():
             mask_images = batch_data['mask']
             reference_images = batch_data['reference']
             flawless_images = batch_data['flawless']
-
-            # TODO get data from batch and process on them one by one
+            prompt = batch_data['prompt']
           
             # get coefficients
             alpha = model(distorted_images, mask_images)
 
             # get conditions
-            conditions = ddt(distorted_images, reference_images)
+            conditions = ddt.generate_conditions(distorted_images, reference_images)
 
             # Inpainting
-            inpaint_result = inpaint(distorted_images, mask_images, conditions, alpha)
+            inpaint_result = inpaint_pipeline.inpaint(distorted_images, mask_images, conditions, prompt, alpha)
+
+            flawless_images = torch.stack(flawless_images).detach()
 
             # Calculate the loss
             loss = criterion(inpaint_result, flawless_images)
