@@ -9,16 +9,16 @@ class InpaintPipeline:
     # load controlnet and stable diffusion v1-5-inpainting
     def __init__(self):
         # get text-prompt and num_inference_steps from config
-        self.num_inference_steps = 10
+        self.num_inference_steps = 25
 
         # load conditions: HED, Pose, Texture, Reference
+        self.controlnet3 = ControlNetModel.from_pretrained("lllyasviel/sd-controlnet-canny", torch_dtype=torch.float16)
         self.controlnet1 = ControlNetModel.from_pretrained("lllyasviel/sd-controlnet-hed", torch_dtype=torch.float16)
         self.controlnet2 = ControlNetModel.from_pretrained("fusing/stable-diffusion-v1-5-controlnet-openpose", torch_dtype=torch.float16)
-        self.controlnet3 = ControlNetModel.from_pretrained("lllyasviel/sd-controlnet-canny", torch_dtype=torch.float16)
-        self.controlnet4 = ControlNetModel.from_pretrained("lllyasviel/control_v11p_sd15_lineart", torch_dtype=torch.float16)
-        self.controlnet5 = ControlNetModel.from_pretrained("lllyasviel/control_v11p_sd15_normalbae", torch_dtype=torch.float16)
+        # self.controlnet4 = ControlNetModel.from_pretrained("lllyasviel/control_v11p_sd15_lineart", torch_dtype=torch.float16)
+        # self.controlnet5 = ControlNetModel.from_pretrained("lllyasviel/control_v11p_sd15_normalbae", torch_dtype=torch.float16)
 
-        self.controlnet = [self.controlnet1, self.controlnet2, self.controlnet3, self.controlnet4, self.controlnet5]
+        self.controlnet = [self.controlnet1, self.controlnet2, self.controlnet3] #, self.controlnet4, self.controlnet5]
         
         self.controlNetInpaintPipeline = StableDiffusionControlNetInpaintPipeline.from_pretrained(
             "SG161222/Realistic_Vision_V3.0_VAE", controlnet=self.controlnet, torch_dtype=torch.float16

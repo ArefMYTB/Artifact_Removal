@@ -10,7 +10,9 @@ model:
   val_ratio: 0.1
   test_ratio: 0.1
   Pretrain_PATH: model.pth
-  num_coefficients: 6
+  num_coefficients: 3
   batch_size: 8
-  dataset_name: NegarMov/DHI
+  dataset_name: vision-paper/DHI
   resolution: 512
+  result_path: result
+  model_path: models/ddt
