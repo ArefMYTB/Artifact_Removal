@@ -1,6 +1,7 @@
 import torch
 import torchvision.transforms as transforms
 import yaml
+import os
 
 from datasets import load_dataset
 from torch.utils.data import DataLoader
@@ -126,6 +127,15 @@ def main():
     inpaint_pipeline = InpaintPipeline()
     # ddt = DDT()
 
+    # Create the required directories
+    checkpoints_path = conf["model_path"]
+    if not os.path.exists(checkpoints_path):
+        os.makedirs(checkpoints_path)
+
+    result_path = conf["result_path"]
+    if not os.path.exists(result_path):
+        os.makedirs(result_path)
+
     # Training loop
     for epoch in range(num_epochs):
         for batch_data in train_loader:
@@ -157,20 +167,17 @@ def main():
 
             # Print loss for monitoring
             print(f'Epoch [{epoch + 1}/{num_epochs}], Loss: {loss.item()}')
+            
+        print(f"[epoch {epoch}] Saving model...")
+        torch.save(model.state_dict(), os.path.join(checkpoints_path, f'trained_model_{epoch}.pth'))
 
-            # TODO set save_result and result_path in config
-            save_result = 2
-            result_path = conf["result_path"]
-            if epoch == save_result:
-                print(f"[epoch {epoch}] Saving results...")
-                inpaint_result.save(os.path.join(result_path, f"_{epoch}"))
-
-            # TODO set save_model and checkpoints_path in config
-            save_model = 2
-            checkpoints_path = conf["model_path"]
-            if epoch == save_model:
-                print("[epoch {epoch}] Saving model...")
-                torch.save(model.state_dict(), os.path.join(checkpoints_path, f'trained_model_{epoch}.pth'))
+        print(f"[epoch {epoch}] Saving results...")
+        if not os.path.exists(os.path.join(result_path, str(epoch))):
+            os.makedirs(os.path.join(result_path, str(epoch)))
+        for idx, res in enumerate(inpaint_result):
+            transform = transforms.ToPILImage()
+            img = transform(res)
+            img.save(os.path.join(result_path, str(epoch), f"gen_{idx}.jpg"))
 
     torch.save(model.state_dict(), 'trained_model.pth')
 
