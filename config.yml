@@ -3,15 +3,14 @@ data:
   input_width: 512
   input_height: 512
 model:
-  batch_size: 4
+  batch_size: 8
   num_epochs: 5
-  learning_rate: 0.001
+  learning_rate: 0.0001
   train_ratio: 0.8
   val_ratio: 0.1
   test_ratio: 0.1
   Pretrain_PATH: model.pth
   num_coefficients: 3
-  batch_size: 8
   dataset_name: vision-paper/DHI
   resolution: 512
   result_path: result
