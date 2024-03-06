@@ -37,14 +37,14 @@ def prepare_dataset(dataset_name):
         mask_images = [image.convert("L") for image in examples['mask']]
         mask_images = [transform(image) for image in mask_images]
 
-        # reference_images = [image.convert("RGB") for image in examples['reference']]
-        # reference_images = [transform(image) for image in reference_images]
+        reference_images = [image.convert("RGB") for image in examples['reference']]
+        reference_images = [transform(image) for image in reference_images]
 
         canny_images = [image.convert("RGB") for image in examples['canny']]
         canny_images = [transform(image) for image in canny_images]
 
-        hed_images = [image.convert("RGB") for image in examples['hed']]
-        hed_images = [transform(image) for image in hed_images]
+        seg_images = [image.convert("RGB") for image in examples['segment']]
+        seg_images = [transform(image) for image in hed_images]
 
         pose_images = [image.convert("RGB") for image in examples['pose']]
         pose_images = [transform(image) for image in pose_images]
@@ -53,7 +53,7 @@ def prepare_dataset(dataset_name):
         examples["flawless"] = flawless_images
         examples["mask"] = mask_images
         # examples["reference"] = reference_images
-        examples["conditions"] = [list(t) for t in zip(canny_images, hed_images, pose_images)]
+        examples["conditions"] = [list(t) for t in zip(canny_images, seg_images, pose_images)]
         examples["prompt"] = [list(t) for t in zip(prompts, prompts, prompts)]
 
         return examples
@@ -67,7 +67,7 @@ def get_loaders(train_dataset, batch_size):
         distorted = [example["distorted"] for example in examples]
         flawless = [example["flawless"] for example in examples]
         mask = [example["mask"] for example in examples]
-        # reference = [example["reference"] for example in examples]
+        reference = [example["reference"] for example in examples]
         conditions = [example["conditions"] for example in examples]
 
         return {
@@ -75,7 +75,7 @@ def get_loaders(train_dataset, batch_size):
             "distorted": distorted,
             "flawless": flawless,
             "mask": mask,
-            # "reference": reference,
+            "reference": reference,
             "conditions": conditions,
         }
 
