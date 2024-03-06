@@ -14,21 +14,6 @@ from diffusers.pipelines.controlnet.pipeline_controlnet_inpaint import *
 from diffusers import DDIMScheduler, AutoencoderKL, ControlNetModel
 from ip_adapter import IPAdapter
 
-# get coefficient model from model.py in DDT ✅
-
-# get dataset from data_prepare.py in Data ✅
-
-# training loop ✅
-
-# run the model and generate coefficients ✅
-
-# get conditions from ddt.py in DDT ✅
-
-# inpaint with pipeline.py in ControlNet ✅
-
-# Loss on problem source
-
-# Loss on coefficient generator ✅
 
 
 def prepare_dataset(dataset_name):
