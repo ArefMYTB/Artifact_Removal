@@ -1,5 +1,5 @@
 data:
-  DHI_folder: Data/Dataset/DHI
+  DHI_folder: Data/Dataset/VDI
   input_width: 512
   input_height: 512
 model:
@@ -11,7 +11,13 @@ model:
   test_ratio: 0.1
   Pretrain_PATH: model.pth
   num_coefficients: 3
-  dataset_name: vision-paper/DHI
+  # dataset_name: vision-paper/DHI
   resolution: 512
   result_path: result
   model_path: models/ddt
+  base_model_path: 
+  image_encoder_path:
+  ip_ckpt:
+  canny_model_path:
+  pose_model_path:
+  segment_model_path:
