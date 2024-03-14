@@ -61,7 +61,7 @@ class CoefficientGenerator(nn.Module):
 
         output = self.fc(combined_features.view(combined_features.size(0), -1))  # Flatten combined_features
 
-        return output.tolist()
+        return output.tolist() # torch.sigmoid(output).tolist()
 
 if __name__ == "__main__":
   
