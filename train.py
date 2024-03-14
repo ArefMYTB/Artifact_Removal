@@ -1,20 +1,20 @@
 import torch
+import torchvision
 import torchvision.transforms as transforms
 import yaml
 import os
+from PIL import Image
+
 
 from datasets import load_dataset
 from torch.utils.data import DataLoader
 
 from DDT.model import CoefficientGenerator
 # from DDT.ddt import DDT
-# from ControlNet.pipeline import InpaintPipeline
 
 from diffusers.pipelines.controlnet.pipeline_controlnet_inpaint import *
 from diffusers import DDIMScheduler, AutoencoderKL, ControlNetModel
 from ip_adapter import IPAdapter
-
-
 
 def prepare_dataset(dataset_name):
     dataset = load_dataset(
@@ -28,33 +28,34 @@ def prepare_dataset(dataset_name):
 
         prompts = examples["prompt"]
 
-        distorted_images = [image.convert("RGB") for image in examples['distorted']]
-        distorted_images = [transform(image) for image in distorted_images]
-
         flawless_images = [image.convert("RGB") for image in examples['flawless']]
         flawless_images = [transform(image) for image in flawless_images]
+
+        distorted_images = [image.convert("RGB") for image in examples['distorted']]
+        distorted_images = [transform(image) for image in distorted_images]
 
         mask_images = [image.convert("L") for image in examples['mask']]
         mask_images = [transform(image) for image in mask_images]
 
-        reference_images = [image.convert("RGB") for image in examples['reference']]
-        reference_images = [transform(image) for image in reference_images]
+        segment_images = [image.convert("P") for image in examples['segment']]
+        segment_images = [transform(image) for image in segment_images]
 
         canny_images = [image.convert("RGB") for image in examples['canny']]
         canny_images = [transform(image) for image in canny_images]
 
-        seg_images = [image.convert("RGB") for image in examples['segment']]
-        seg_images = [transform(image) for image in hed_images]
-
         pose_images = [image.convert("RGB") for image in examples['pose']]
-        pose_images = [transform(image) for image in pose_images]
+        pose_images = [transform(image) for image in pose_images]       
 
-        examples["distorted"] = distorted_images
+        reference_images = [image.convert("RGB") for image in examples['reference']]
+        reference_images = [transform(image) for image in reference_images] 
+
+        examples["prompt"] = prompts
         examples["flawless"] = flawless_images
+        examples["distorted"] = distorted_images
         examples["mask"] = mask_images
-        # examples["reference"] = reference_images
-        examples["conditions"] = [list(t) for t in zip(canny_images, seg_images, pose_images)]
-        examples["prompt"] = [list(t) for t in zip(prompts, prompts, prompts)]
+        examples["conditions"] = [list(t) for t in zip(canny_images, pose_images, segment_images)]
+        examples["reference"] = reference_images
+
 
         return examples
 
@@ -64,19 +65,19 @@ def prepare_dataset(dataset_name):
 def get_loaders(train_dataset, batch_size):
     def collate_fn(examples):
         prompt = [example["prompt"] for example in examples]
-        distorted = [example["distorted"] for example in examples]
         flawless = [example["flawless"] for example in examples]
+        distorted = [example["distorted"] for example in examples]
         mask = [example["mask"] for example in examples]
-        reference = [example["reference"] for example in examples]
         conditions = [example["conditions"] for example in examples]
+        reference = [example["reference"] for example in examples]
 
         return {
             "prompt": prompt,
-            "distorted": distorted,
             "flawless": flawless,
+            "distorted": distorted,
             "mask": mask,
-            "reference": reference,
             "conditions": conditions,
+            "reference": reference,
         }
 
     train_dataloader = DataLoader(
@@ -131,8 +132,8 @@ def main():
     segment_model_path = conf["segment_model_path"]
 
     canny_controlnet = ControlNetModel.from_pretrained(canny_model_path, torch_dtype=torch.float16)
-    pose_controlnet = ControlNetModel.from_single_file(pose_model_path, torch_dtype=torch.float16)
-    segment_controlnet = ControlNetModel.from_single_file(segment_model_path, torch_dtype=torch.float16)
+    pose_controlnet = ControlNetModel.from_pretrained(pose_model_path, torch_dtype=torch.float16)
+    segment_controlnet = ControlNetModel.from_pretrained(segment_model_path, torch_dtype=torch.float16)
 
     controlnet = [canny_controlnet, pose_controlnet, segment_controlnet]
 
@@ -145,6 +146,8 @@ def main():
         feature_extractor=None,
         safety_checker=None
     )
+
+    pipe.to('cuda')
 
     # load ip-adapter
     ip_model = IPAdapter(pipe, image_encoder_path, ip_ckpt, device)
@@ -177,15 +180,43 @@ def main():
             # get coefficients
             alpha = model(distorted_images, mask_images)
 
-            # Inpainting
-            inpaint_result = ip_model.generate(pil_image=reference_images, prompt=prompt, image=distorted_images, control_image=conditions,
-                                        mask_image=mask_images, width=512, height=768, num_samples=4, num_inference_steps=30, seed=42,
-                                        strength=1)
+            print(alpha)
 
+            # Convert tensors back to PIL Images
+            to_pil = transforms.ToPILImage()
+            dis_images = [to_pil(image) for image in distorted_images]
+            msk_images = [to_pil(image) for image in mask_images]
+            rfc_images = [to_pil(image) for image in reference_images]
+            cnd_images = [[to_pil(image) for image in condition] for condition in conditions]
+
+            transform = transforms.Compose([
+                transforms.ToTensor()
+            ])
+
+            # Inpainting
+            result_batch = []
+            for i in range(len(dis_images)):
+                result = ip_model.generate(
+                    pil_image=rfc_images[i], 
+                    prompt=prompt[i],
+                    image=dis_images[i], 
+                    control_image=cnd_images[i],
+                    controlnet_conditioning_scale=alpha[i][:3],
+                    mask_image=msk_images[i], 
+                    num_samples=1, 
+                    num_inference_steps=30,
+                    seed=42, 
+                    strength=1.0
+                )[0]
+
+                result_batch.append(transform(result).requires_grad_(True))
+
+            result_batch = torch.stack(result_batch)
+            
             flawless_images = torch.stack(flawless_images).detach()
 
             # Calculate the loss
-            loss = criterion(inpaint_result, flawless_images)
+            loss = criterion(result_batch, flawless_images)
 
             # Backpropagation and optimization
             optimizer.zero_grad()
@@ -198,13 +229,13 @@ def main():
         print(f"[epoch {epoch}] Saving model...")
         torch.save(model.state_dict(), os.path.join(checkpoints_path, f'trained_model_{epoch}.pth'))
 
-        print(f"[epoch {epoch}] Saving results...")
-        if not os.path.exists(os.path.join(result_path, str(epoch))):
-            os.makedirs(os.path.join(result_path, str(epoch)))
-        for idx, res in enumerate(inpaint_result):
-            transform = transforms.ToPILImage()
-            img = transform(res)
-            img.save(os.path.join(result_path, str(epoch), f"gen_{idx}.jpg"))
+        # print(f"[epoch {epoch}] Saving results...")
+        # if not os.path.exists(os.path.join(result_path, str(epoch))):
+        #     os.makedirs(os.path.join(result_path, str(epoch)))
+        # for idx, res in enumerate(inpaint_result):
+        #     transform = transforms.ToPILImage()
+        #     img = transform(res)
+        #     img.save(os.path.join(result_path, str(epoch), f"gen_{idx}.jpg"))
 
     torch.save(model.state_dict(), 'trained_model.pth')
 
