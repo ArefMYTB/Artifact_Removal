@@ -13,8 +13,6 @@ class DDT:
     def __init__(self):
         self.canny_processor = Processor("canny")
         self.softedge_hed_processor = Processor("softedge_hed")
-        self.lineart_realistic_processor = Processor("lineart_realistic")
-        self.normal_bae_processor = Processor("normal_bae")
         self.pose_image_processor = Processor("openpose_full")
         
 
@@ -23,12 +21,10 @@ class DDT:
         for i, img in enumerate(img_batch):
             canny_image = self.canny_processor(img[0], to_pil=True)
             hed_image = self.softedge_hed_processor(img[0], to_pil=True)
-            lineart_realistic = self.lineart_realistic_processor(img[0], to_pil=True)
-            normal_bae = self.normal_bae_processor(img[0], to_pil=True)
             pose_image = self.pose_image_processor(img[0], to_pil=True)
             texture_image = reference_img[i]
             
-            control_images = [canny_image, hed_image, lineart_realistic, normal_bae, pose_image] #, texture_image]
+            control_images = [canny_image, hed_image, pose_image] #, texture_image]
 
             control_batch.append(control_images)
         
