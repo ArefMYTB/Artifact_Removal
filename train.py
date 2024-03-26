@@ -12,6 +12,7 @@ from torch.utils.data import DataLoader
 from DDT.model import CoefficientGenerator
 # from DDT.ddt import DDT
 
+from matplotlib import pyplot as plt
 from diffusers.pipelines.controlnet.pipeline_controlnet_inpaint import *
 from diffusers import DDIMScheduler, AutoencoderKL, ControlNetModel
 from ip_adapter import IPAdapter
@@ -89,6 +90,14 @@ def get_loaders(train_dataset, batch_size):
 
     return train_dataloader
 
+def make_inpaint_condition(image, image_mask):
+    image = np.array(image.convert("RGB")).astype(np.float32) / 255.0
+    image_mask = np.array(image_mask.convert("L"))
+    assert image.shape[0:1] == image_mask.shape[0:1], "image and image_mask must have the same image size"
+    image[image_mask < 128] = -1.0 # set as masked pixel
+    image = np.expand_dims(image, 0).transpose(0, 3, 1, 2)
+    image = torch.from_numpy(image)
+    return image
 
 def main():
     # Read the necessary parameters from the config file
@@ -181,7 +190,8 @@ def main():
             alpha = model(distorted_images, mask_images)
 
             print(alpha)
-
+            alpha = torch.sigmoid(alpha * 100).tolist()
+            print(alpha)
             # Convert tensors back to PIL Images
             to_pil = transforms.ToPILImage()
             dis_images = [to_pil(image) for image in distorted_images]
@@ -202,21 +212,54 @@ def main():
                     image=dis_images[i], 
                     control_image=cnd_images[i],
                     controlnet_conditioning_scale=alpha[i][:3],
+                    scale=alpha[i][-1],
                     mask_image=msk_images[i], 
                     num_samples=1, 
                     num_inference_steps=30,
-                    seed=42, 
+                    seed=8, 
                     strength=1.0
                 )[0]
+                
+                result_masked = make_inpaint_condition(result, msk_images[i])
+                result_batch.append(result_masked.requires_grad_(True))
 
-                result_batch.append(transform(result).requires_grad_(True))
+                # # Squeeze the batch dimension if present
+                # result_masked = result_masked.squeeze()
+
+                # # # Transpose the tensor to (height, width, channels) format
+                # result_masked = result_masked.permute(1, 2, 0)
+
+                # # # Display the image
+                # plt.imshow(result_masked)
+                # plt.axis('off')  # Turn off axis labels and ticks
+                # plt.show()
+
+            fl_images = [to_pil(image) for image in flawless_images]
+            flawless_batch = []
+            for i in range(len(fl_images)):
+                flawless = make_inpaint_condition(fl_images[i], msk_images[i])
+                flawless_batch.append(flawless)
+
+                # # Squeeze the batch dimension if present
+                # flawless = flawless.squeeze()
+
+                # # Transpose the tensor to (height, width, channels) format
+                # flawless = flawless.permute(1, 2, 0)
+
+                # # Display the image
+                # plt.imshow(flawless)
+                # plt.axis('off')  # Turn off axis labels and ticks
+                # plt.show()
+
+
+
 
             result_batch = torch.stack(result_batch)
-            
-            flawless_images = torch.stack(flawless_images).detach()
+            flawless_batch = torch.stack(flawless_batch)
+
 
             # Calculate the loss
-            loss = criterion(result_batch, flawless_images)
+            loss = criterion(result_batch, flawless_batch)
 
             # Backpropagation and optimization
             optimizer.zero_grad()
