@@ -2,7 +2,7 @@
 
 This repository contains the official code for the paper:
 
-**[A Conditional Inpainting Approach for End-to-End Artifact Removal in VTON and Pose Transfer](https://arxiv.org/abs/PUT_YOUR_ARXIV_LINK_HERE)**
+**[A Conditional Inpainting Approach for End-to-End Artifact Removal in VTON and Pose Transfer]([https://arxiv.org/abs/PUT_YOUR_ARXIV_LINK_HERE](https://arxiv.org/abs/2410.04052))**
 
 ## Abstract
 In this paper, we propose a novel conditional inpainting method designed to tackle the artifact removal problem in virtual try-on (VTON) and pose transfer tasks. Our approach effectively restores image quality and continuity by generating context-aware image completions, offering significant improvements over existing methods.
