@@ -23,9 +23,9 @@ Examples of artifact removal using our method:
 If you find this code helpful in your research, please consider citing our paper:
 
 ```bash
-@article{YOUR_CITATION_INFO,
-  title={A Conditional Inpainting Approach For End-to-End Artifact Removal In VTON and Pose Transfer},
-  author={Your Name, Co-authors},
-  journal={arXiv preprint arXiv:PUT_YOUR_ARXIV_LINK_HERE},
+@article{tabatabaei2024beyond,
+  title={Beyond Imperfections: A Conditional Inpainting Approach for End-to-End Artifact Removal in VTON and Pose Transfer},
+  author={Tabatabaei, Aref and Dehghanian, Zahra and Amirmazlaghani, Maryam},
+  journal={arXiv preprint arXiv:2410.04052},
   year={2024}
 }
